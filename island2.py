@@ -3679,7 +3679,7 @@ class Host(QWidget):
                 r = island_update.check_and_update()
             except Exception as e:
                 r = dict(status="error", msg=str(e), changed=[])
-            self.win_sig.emit(("update", dict(r, manual=manual)))
+            self.win_sig.emit(("isl_update", dict(r, manual=manual)))
         threading.Thread(target=run, daemon=True).start()
 
     def update_done(self, r):
@@ -3817,7 +3817,7 @@ class Host(QWidget):
         st = self.settings.get
         if kind == "hotkey":
             self.on_hotkey(arg)
-        elif kind == "update":
+        elif kind == "isl_update":         # GitHub updater ("update" = Windows Update, further down)
             self.update_done(arg)
         elif kind == "webicon":
             self.load_launch()
