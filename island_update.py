@@ -1,4 +1,4 @@
-"""island_update.py - keeps a shared copy of the island up to date from GitHub (the userkiller/island).
+"""island_update.py - keeps a shared copy of the island up to date from GitHub (Aboodkiller/island).
 
 Only CODE is replaced (island*.py, ui.html, fonts, setup files, the AI guide). Your own files are never touched:
 plans/, every .json (settings, life, study, cards, launch...), sounds/, logs. A file that gets replaced is first copied
