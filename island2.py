@@ -1707,9 +1707,17 @@ class Host(QWidget):
         self.hb.timeout.connect(feats.heartbeat)
         self.hb.start(10_000)
         feats.heartbeat()
+        try:                              # 16 GB and less: tighter memory limits, trim twice as often
+            import psutil
+            self.ram_gb = psutil.virtual_memory().total / 2**30
+        except Exception:
+            self.ram_gb = 32
+        self.low_ram = self.ram_gb < 20
+        self._press_at = 0
+        print(f"ram: {self.ram_gb:.0f} GB" + (" -> low-RAM mode (page limit 1.5 GB, trim every 5 min)" if self.low_ram else ""))
         self.trim_timer = QTimer(self)    # give idle RAM back to Windows
         self.trim_timer.timeout.connect(self.trim)
-        self.trim_timer.start(10 * 60_000)
+        self.trim_timer.start((5 if self.low_ram else 10) * 60_000)
         self.rguard_timer = QTimer(self)  # the page process's memory (see renderer_guard)
         self.rguard_timer.timeout.connect(self.renderer_guard)
         self.rguard_timer.start(60_000)
@@ -6702,21 +6710,30 @@ class Host(QWidget):
             mb = psutil.Process(pid).memory_info().private / 2**20 if pid else 0
         except Exception:
             return
+        low = getattr(self, "low_ram", False)
+        try:                              # Windows short on RAM (85 %+ used): give ours back now, at most every 2 min
+            import psutil
+            if psutil.virtual_memory().percent >= 85 and time.time() - self._press_at > 120:
+                self._press_at = time.time()
+                self.trim(force=True)
+        except Exception:
+            pass
         k = getattr(self, "desk", None)
         if k is not None and k.ready:
             try:
                 import psutil
                 dp = k.page.renderProcessPid()
-                if dp and dp != pid and psutil.Process(dp).memory_info().private > 900 * 2**20:
-                    print("mem: desktop widgets page over 900 MB -> reloading it")
+                if dp and dp != pid and psutil.Process(dp).memory_info().private > (600 if low else 900) * 2**20:
+                    print("mem: desktop widgets page too big -> reloading it")
                     k.ready = False
                     k.view.reload()
             except Exception:
                 pass
-        if mb < 2500:
+        soft, pill_max, hard_max = (1500, 2500, 4000) if low else (2500, 4000, 6000)
+        if mb < soft:
             return
         quiet = self.mode == "pill" and not self.toasts and idle_seconds() > 90
-        if not (quiet or (self.mode == "pill" and mb > 4000) or mb > 6000):
+        if not (quiet or (self.mode == "pill" and mb > pill_max) or mb > hard_max):
             return
         hard = getattr(self, "_rg_soft_failed", False)
         print(f"mem: page process at {mb:.0f} MB -> {'new page process' if hard else 'reloading the page'}")

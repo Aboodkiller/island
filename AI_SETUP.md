@@ -89,6 +89,19 @@ Each file has a `_help` field that explains it — read it.
 - **Laptop temps widget** reads ASUS ACPI; on other brands it just stays empty.
 - **Voice commands**: off by default (needs `vosk` models, not included).
 
+## 3b. RAM (16 GB laptops)
+Measured on the original PC: the island uses about **250–450 MB of real RAM** most of the time (Task Manager's
+"Memory" column across python + 2–3 QtWebEngineProcess), creeping toward ~1 GB before the idle trim hands it back.
+On PCs with less than 20 GB it switches to **low-RAM mode by itself** (logged as `ram: 16 GB -> low-RAM mode` in
+`island.log`): trims every 5 min instead of 10, restarts the page process past 1.5 GB instead of 2.5 GB, and when
+Windows is 85 %+ full it gives its memory back right away. Every 10 min `island.log` prints a `mem:` line with the numbers.
+If the user wants it lighter still (Settings, gear tab):
+- **AI brain: Off** (default here). Fast/Smart load a 2.7–3.4 GB Ollama model for 10 min after each use. Don't install it on 16 GB.
+- **Voice: off** (default). Whisper/Vosk models take 0.3–1 GB while on.
+- **Desktop widgets: off** saves the second page process (~50–100 MB).
+- Don't open the Dashboard window unless they have a second monitor (another page process).
+- Keep **Trim RAM when idle** on.
+
 ## 4. Optional extras
 - **Spotify lyrics/likes through Spicetify:** install Spicetify, copy `extras\spicetify\island-bridge.js` into
   `%APPDATA%\spicetify\Extensions\`, run `spicetify config extensions island-bridge.js` then `spicetify apply`.

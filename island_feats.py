@@ -134,7 +134,7 @@ SCHEMA = [
     ]),
 ]
 
-DEFAULTS = dict(shape="notch", rim=True, pet=True, buddy="orb", desk=True, weather=False, split=True, devbat=True, squig=True, voice=False, voice_key="rctrl", wake=True, voice_model="base", brain="smart", lan=False, deck_usb=False, checkin=True, mirror_whatsapp=True, mirror_phone=True, mirror_discord=False, mirror_outlook=False, quiet="off", wx_alerts=True, screen=True, prayer=True, adhkar=True, brief=True, recap=True, bedtime="00:00", stretch=True, block=False, guard=True, next_nudge=True, autohide=False, player="pill", follow=True, watchdog=True, live_reload=True, update_toast=True, ram_trim=True, backups=True,
+DEFAULTS = dict(shape="notch", rim=True, pet=True, buddy="orb", desk=True, weather=False, split=True, devbat=True, squig=True, voice=False, voice_key="rctrl", wake=True, voice_model="base", brain="off", lan=False, deck_usb=False, checkin=True, mirror_whatsapp=True, mirror_phone=True, mirror_discord=False, mirror_outlook=False, quiet="off", wx_alerts=True, screen=True, prayer=True, adhkar=True, brief=True, recap=True, bedtime="00:00", stretch=True, block=False, guard=True, next_nudge=True, autohide=False, player="pill", follow=True, watchdog=True, live_reload=True, update_toast=True, ram_trim=True, backups=True,
                 theme="default", pillstyle="clean", font="geist", scale=1.0, motion="springy", icons=True, digits=True, glow=True,
                 accent=True, bump=True, breathe=False, heatmap=True, glass=False,
                 viz=True, lyrics="pill", artbg=True, sounds="soft", sound_vol=0.65, confetti=True,
