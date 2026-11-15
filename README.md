@@ -8,6 +8,11 @@ volume/brightness, timers, notifications, desktop widgets and a phone remote, al
 2. Put this folder somewhere permanent, e.g. `Documents\island`.
 3. Double-click `setup.bat`.
 
+## Fastest way: let your AI do it
+Tell Claude Code (or any AI that can run commands on your PC):
+
+> Clone https://github.com/Aboodkiller/island into my Documents folder, read AI_SETUP.md and set it up for me.
+
 ## Make it yours
 Open your AI (Claude Code, Claude Desktop with file access, etc.) **in this folder** and say:
 
