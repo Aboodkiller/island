@@ -10,7 +10,7 @@ if errorlevel 1 (
   exit /b 1
 )
 echo  [1/4] Closing Island if it is running (a running island breaks the install)...
-powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -like python* -and $_.CommandLine -match island2\.py|island_watchdog } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'python*' -and $_.CommandLine -match 'island2\.py|island_watchdog' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 echo  [2/4] Installing packages (one time, 1-3 min)...
 python -m pip install --upgrade --quiet -r requirements.txt
 python check_qt.py
