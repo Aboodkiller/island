@@ -17,7 +17,7 @@ import urllib.request
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = "the userkiller/island"
+REPO = "Aboodkiller/island"
 BRANCH = "main"
 STATE = os.path.join(HERE, "update.json")
 MARK = os.path.join(HERE, "SHARED_COPY")       # only copies installed from GitHub have it; the original never updates
