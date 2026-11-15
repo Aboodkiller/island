@@ -224,7 +224,11 @@ body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;anima
 
 /* ------------------------------------------------------------------ panel */
 .panel{display:flex;flex-direction:column;height:100%}
-.ph{padding:16px 18px 10px;display:flex;flex-direction:column;gap:11px}
+.ph{padding:16px 18px 10px;display:flex;flex-direction:column;gap:11px;position:relative;cursor:grab}
+.ph [data-a],.ph .tabs{cursor:pointer}
+.ph::before{content:"";position:absolute;top:6px;left:50%;width:38px;height:4px;margin-left:-19px;border-radius:2px;background:rgba(255,255,255,.14);transition:background .2s}
+.ph:hover::before{background:rgba(255,255,255,.3)}
+#isl.dragging .ph{cursor:grabbing}
 .nav{display:flex;gap:2px}
 .nav span{width:26px;height:26px;border-radius:13px;display:grid;place-items:center;cursor:pointer;color:var(--mut);transition:background .2s,color .2s}
 .nav span:hover{background:var(--card2);color:var(--fg)}
@@ -799,6 +803,11 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 @keyframes itp{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 2px var(--c),0 0 24px -4px var(--c)}}
 /* ---- right-click menu: the island opens into it */
 .imenu{display:flex;flex-direction:column;gap:10px;padding:14px;height:100%}
+.imtop{display:flex;align-items:center;justify-content:space-between;padding:0 2px 0 6px;margin-bottom:-2px}
+.imtop b{font-size:12px;font-weight:750;letter-spacing:.04em;color:var(--mut)}
+.imx{display:grid;place-items:center;width:30px;height:30px;border-radius:15px;background:var(--card);color:var(--mut);cursor:pointer;transition:background .15s,color .15s,transform .12s}
+.imx:hover{background:var(--card2);color:#fff}
+.imx:active{transform:scale(.92)}
 .imh{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .imh span{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;border-radius:16px;background:var(--card);cursor:pointer;font-size:11.5px;font-weight:700;color:var(--mut);transition:background .2s,transform .15s var(--spring),color .2s}
 .imh span:hover{background:var(--card2);color:var(--fg);transform:translateY(-2px)}
@@ -4210,6 +4219,7 @@ function renderIMenu() {
   const tg = (k, l) => `<span class="${d[k] ? "on" : ""}" data-a="im" data-v="${k}" data-x="${d[k] ? "false" : "true"}"><i></i>${l}</span>`;
   const here = scr.findIndex(x => x.here), dash = scr.findIndex(x => x.dash);
   let h = `<div class="imenu">
+    <div class="imtop"><b>Quick settings</b><span class="imx" data-a="im" data-v="close" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
     <div class="imh">${big("panel", "isl", "Panel")}${big("settings", GEAR.replace('width="15" height="15"', 'width="20" height="20"'), "Settings")}${big("cmd", "search", "Command")}${big("voice", "mic", d.listening ? "Stop" : "Voice", d.listening)}</div>
     <div class="imr"><span>Position</span>${seg("dock", [["top", "Top"], ["left", "Left"], ["right", "Right"]], d.dock)}</div>`;
   if (scr.length > 1) {
@@ -4226,6 +4236,7 @@ function renderIMenu() {
 function imenuDo(v, a) {
   const d = S.im || {};
   let x = null; try { x = a.dataset.x != null ? JSON.parse(a.dataset.x) : null; } catch (e) {}
+  if (v === "close") { setMode("pill"); renderPill(); return; }
   if (v === "quit") { if (S.qArm > Date.now()) { send("imenu_do", ["quit", null]); return; } S.qArm = Date.now() + 2500; renderIMenu(); setTimeout(() => { if (S.mode === "imenu") renderIMenu(); }, 2600); return; }
   if (["compact", "follow", "autohide"].includes(v)) { d[v] = !!x; send("imenu_do", [v, !!x]); renderIMenu(); return; }
   if (v === "dock" || v === "screen" || v === "dash") { send("imenu_do", [v, v === "dash" && x === -1 ? null : x]); setMode("pill"); renderPill(); return; }
@@ -4547,7 +4558,10 @@ window.island = {
     if (S.mode === "music" && v && v !== S.mview) { S.mview = S.lastMview = v; S.musicKey = null; S.stay = true; send("mview", v); setMode("music"); renderMusic(); return; }
     if (S.mode === "music") closeMusic(); else openMusic(v || undefined); },
   mode(m) { setMode(m); renderAll(); },
-  drag(on) { S.drag = on; $("isl").classList.toggle("dragging", on); if (on && S.mode !== "pill" && S.mode !== "music" && S.mode !== "toast") setMode("pill"); },
+  drag(on) { S.drag = on; $("isl").classList.toggle("dragging", on);
+    if (on && S.mode === "panel") S.dragBack = S.tab;                // dragged by the panel: open it again where it lands
+    if (on && S.mode !== "pill" && S.mode !== "music" && S.mode !== "toast") setMode("pill");
+    if (!on && S.dragBack) { const t = S.dragBack; S.dragBack = null; setTimeout(() => { if (S.mode === "pill") { S.tab = t; setMode("panel"); updateSoundWatch(); } }, 420); } },
   hidden(on) { $("isl").classList.toggle("gone", on); },
   away(on) { document.body.classList.toggle("away", !!on); },
   outside() {
@@ -4791,6 +4805,7 @@ isl.addEventListener("mousedown", e => {
   const a = e.target.closest("[data-a]");
   if (a) return;
   if (S.mode === "pill" || S.mode === "peek" || S.mode === "live" || S.mode === "music" || S.mode === "toast") { press = {x: e.screenX, y: e.screenY}; send("press", [e.screenX, e.screenY]); }
+  else if (S.mode === "panel" && e.target.closest("#ph") && !e.target.closest(".tabs,input")) { press = {x: e.screenX, y: e.screenY}; send("press", [e.screenX, e.screenY]); }
 });
 window.addEventListener("mouseup", e => {
   if (press && !S.drag) {
@@ -4801,6 +4816,7 @@ window.addEventListener("mouseup", e => {
 });
 isl.addEventListener("contextmenu", e => {
   e.preventDefault();
+  if (S.mode === "imenu") { setMode("pill"); renderPill(); return; }   // right-click again = close the menu
   if (!DASH && e.target.closest(".lnch span[data-i], .lnch .ladd")) { S.ledit = !S.ledit; S.lpick = false; renderPanel(false); return; }
   send("menu", [e.screenX, e.screenY]);
 });
