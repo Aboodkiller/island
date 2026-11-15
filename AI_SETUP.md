@@ -17,7 +17,11 @@ handed over clean: every plan file here is a **template**, so the job is to repl
 1. Python 3.12+ from python.org, with **"Add python.exe to PATH"** ticked. Check: `python --version`.
 2. Put this folder somewhere permanent (e.g. `Documents\island`). Don't run it from Downloads or a zip.
 3. Double-click `setup.bat`. It installs `requirements.txt`, adds Island to Startup and starts it.
-4. Not showing? Run `python island2.py` in a terminal to see the error. Black box instead of a pill: `pythonw island2.py --gl`
+4. **"QtWebEngineProcess.exe - Qt6WebEngineCore.dll was not found"**: PySide6 got half-installed (usually pip upgrading
+   it while an island was running) or the antivirus took the DLL. Close the island and run `setup.bat` again: it checks
+   with `check_qt.py` and reinstalls PySide6 clean. Still missing = restore it from the antivirus quarantine and add an
+   exception for the PySide6 folder. Never start the island while pip is still installing.
+   Not showing at all? Run `python island2.py` in a terminal to see the error. Black box instead of a pill: `pythonw island2.py --gl`
    (or `--software`). Logs: `island.log`, `crash_last.log`, `watchdog.log`.
 5. Uninstall from startup: `python island2.py --remove-startup`.
 
