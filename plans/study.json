@@ -2,155 +2,67 @@
   "version": 1,
   "updated": "2026-11-15",
   "updated_by": "template",
-  "exam_day": "2027-01-15",
-  "mock_start": "2026-12-20",
-  "_help": "Each subject has an ordered list of sessions. The widget shows, for each subject scheduled today, the first session whose 'done' is null. To mark a session finished set 'done' to the date (YYYY-MM-DD). To change the plan, edit/insert/remove items (keep ids unique). Weekday keys: 0=Mon 1=Tue 2=Wed 3=Thu 4=Fri 5=Sat 6=Sun. rhythm.content / rhythm.mock = which subjects run on each weekday before / after mock_start; times[weekday] = start time of each block that day (same order); hours[subject] = block length. Subject keys P/M/B/H/R are used by the code for colours and focus timers (P Physics, M Maths, B Biology, H History, R Review) - reuse them for any subject and just change 'name'. checkpoints = {date: note} shown on that day.",
+  "_help": "EMPTY until you add your study: the Study tab and study blocks stay hidden while 'subjects' is empty. To fill it, tell your AI 'add my study plan' (it follows AI_SETUP.md). exam_day + exam_name = the big countdown (or set any countdown with the command bar: big <what> <date>). mock_start (optional) switches rhythm.content -> rhythm.mock on that date. Weekday keys: 0=Mon ... 6=Sun. rhythm.content[weekday] = subject keys studied that day in order; times[weekday] = start time of each of those blocks; hours[subject] = block length ('2h', '1.5h', '45m'). subjects[key].items = sessions in order; the island shows the first one with done=null and sets done to the date when you tick it. Subject keys P/M/B/H/R drive colours and focus timers: reuse them for any subject and change 'name' (e.g. M -> 'Calculus').",
+  "exam_name": "",
+  "exam_day": "",
   "rhythm": {
-    "content": {
-      "0": [
-        "M"
-      ],
-      "1": [
-        "P"
-      ],
-      "2": [
-        "M",
-        "B"
-      ],
-      "3": [
-        "P"
-      ],
-      "4": [
-        "H"
-      ],
-      "5": [
-        "M",
-        "P"
-      ],
-      "6": [
-        "B"
-      ]
-    },
-    "mock": {
-      "0": [
-        "M"
-      ],
-      "1": [
-        "P"
-      ],
-      "2": [
-        "M",
-        "B"
-      ],
-      "3": [
-        "P"
-      ],
-      "4": [
-        "H"
-      ],
-      "5": [
-        "M",
-        "P"
-      ],
-      "6": [
-        "B"
-      ]
-    }
+    "content": {},
+    "mock": {}
   },
-  "times": {
-    "0": [
-      "17:00"
-    ],
-    "1": [
-      "17:00"
-    ],
-    "2": [
-      "16:00",
-      "19:00"
-    ],
-    "3": [
-      "17:00"
-    ],
-    "4": [
-      "11:00"
-    ],
-    "5": [
-      "11:00",
-      "16:00"
-    ],
-    "6": [
-      "17:00"
-    ]
-  },
-  "hours": {
-    "P": "2h",
-    "M": "2h",
-    "B": "1.5h",
-    "H": "1h",
-    "R": "1h"
-  },
+  "times": {},
+  "hours": {},
   "checkpoints": {},
-  "subjects": {
-    "P": {
-      "name": "Physics",
-      "items": [
-        {
-          "id": "P01",
-          "text": "Unit 1 lesson 1 (example - replace me)",
-          "phase": "content",
-          "done": null
-        },
-        {
-          "id": "P02",
-          "text": "Unit 1 lesson 2",
-          "phase": "content",
-          "done": null
-        }
+  "subjects": {},
+  "_example": {
+    "exam_name": "Finals",
+    "exam_day": "2027-01-15",
+    "rhythm": {
+      "content": {
+        "0": [
+          "M"
+        ],
+        "2": [
+          "P",
+          "M"
+        ]
+      }
+    },
+    "times": {
+      "0": [
+        "17:00"
+      ],
+      "2": [
+        "16:00",
+        "19:00"
       ]
     },
-    "M": {
-      "name": "Maths",
-      "items": [
-        {
-          "id": "M01",
-          "text": "Unit 1 lesson 1 (example - replace me)",
-          "phase": "content",
-          "done": null
-        },
-        {
-          "id": "M02",
-          "text": "Unit 1 lesson 2",
-          "phase": "content",
-          "done": null
-        }
-      ]
+    "hours": {
+      "P": "2h",
+      "M": "1.5h"
     },
-    "B": {
-      "name": "Biology",
-      "items": [
-        {
-          "id": "B01",
-          "text": "Unit 1 lesson 1 (example - replace me)",
-          "phase": "content",
-          "done": null
-        }
-      ]
-    },
-    "H": {
-      "name": "History",
-      "items": [
-        {
-          "id": "H01",
-          "text": "Unit 1 lesson 1 (example - replace me)",
-          "phase": "content",
-          "done": null
-        }
-      ]
-    },
-    "R": {
-      "name": "Review",
-      "repeat": "Review this week's mistakes + catch up any missed session",
-      "items": []
+    "subjects": {
+      "P": {
+        "name": "Physics",
+        "items": [
+          {
+            "id": "P01",
+            "text": "Unit 1 lesson 1",
+            "phase": "content",
+            "done": null
+          }
+        ]
+      },
+      "M": {
+        "name": "Calculus",
+        "items": [
+          {
+            "id": "M01",
+            "text": "Limits",
+            "phase": "content",
+            "done": null
+          }
+        ]
+      }
     }
   }
 }

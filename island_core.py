@@ -103,6 +103,12 @@ class Study(JsonFile):
     def __init__(self, path):
         super().__init__(path, {"subjects": {}, "rhythm": {"content": {}, "mock": {}}, "times": {}, "hours": {}})
 
+    @property
+    def ok(self):
+        """The file exists AND has at least one subject (an empty plan = no study features yet)."""
+        subs = (self.data or {}).get("subjects") or {}
+        return os.path.exists(self.path) and any((v or {}).get("items") or "repeat" in (v or {}) for v in subs.values())
+
     def _date(self, key, default):
         try:
             return dt.date.fromisoformat(self.data.get(key, default))
@@ -118,11 +124,16 @@ class Study(JsonFile):
         return self._date("mock_start", "2026-11-22")
 
     def subjects_on(self, day):
-        phase = "mock" if day >= self.mock_start else "content"
+        phase = "mock" if (self.data.get("mock_start") and day >= self.mock_start) else "content"
         return list(self.data.get("rhythm", {}).get(phase, {}).get(str(day.weekday()), []))
 
     def items(self, s):
         return self.data.get("subjects", {}).get(s, {}).get("items", [])
+
+    def subject_name(self, s):
+        """The plan's own name for a subject when it's English ("Calculus"), else the default (Physics, Maths...)."""
+        n = str(((self.data.get("subjects") or {}).get(s) or {}).get("name") or "").strip()
+        return n if n and not is_arabic(n) else SUBJECT_EN.get(s, s)
 
     def undone(self, s):
         return [it for it in self.items(s) if not it.get("done")]
@@ -185,7 +196,7 @@ class Study(JsonFile):
             avail, d = 0, today
             if self.done_on(s, today):
                 d += DAY
-            while d < self.mock_start:
+            while d < (self.mock_start if self.data.get("mock_start") else self.exam_day):
                 if s in self.subjects_on(d):
                     avail += 1
                 d += DAY
@@ -457,7 +468,7 @@ class Model:
             for t in self.study.tasks_for(day, today):
                 s = t["s"]
                 out.append(dict(key=f"S:{t['id']}", src="S", cat=SUBJECT_CAT.get(s, "R"), s=s,
-                                title=SUBJECT_EN.get(s, s), desc=t["text"], time=t["time"], dur=t["dur"],
+                                title=self.study.subject_name(s), desc=t["text"], time=t["time"], dur=t["dur"],
                                 end=None, done=t["done"], tickable=True, optional=False, block=False,
                                 ref=dict(s=s, id=t["id"], repeat=t.get("repeat", False))))
         if self.health.ok:

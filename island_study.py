@@ -25,19 +25,7 @@ EXAM_MIN = {"P": 150, "MA": 150, "B": 120, "HI": 90}          # real ministry le
 FOCUS_S, BREAK_S = 50 * 60, 10 * 60
 
 # his past papers (new curriculum) as listed in tawjihi-plan.md; "mock" = saved for the timed mock phase
-PAPERS = [
-    ("P24S", "P", "2024 summer", False), ("P24W", "P", "2024 supp", False), ("P25S", "P", "2025 summer", True),
-    ("P25W", "P", "2025 supp", True), ("P26S", "P", "2026 summer", True),
-    ("M24S1", "MA", "2024 summer · 1", False), ("M24S2", "MA", "2024 summer · 2", False),
-    ("M24W1", "MA", "2024 supp · 1", False), ("M24W2", "MA", "2024 supp · 2", False),
-    ("M25S1", "MA", "2025 summer · 1", True), ("M25S2", "MA", "2025 summer · 2", True),
-    ("M25W1", "MA", "2025 supp · 1", True), ("M25W2", "MA", "2025 supp · 2", True),
-    ("M26S1", "MA", "2026 summer · 1", True), ("M26S2", "MA", "2026 summer · 2", True),
-    ("B24S", "B", "2024 summer", False), ("B24W", "B", "2024 supp", False), ("B25S", "B", "2025 summer", True),
-    ("B25W", "B", "2025 supp", True), ("B26S", "B", "2026 summer", True),
-    ("H24S", "HI", "2024 summer", False), ("H24W", "HI", "2024 supp", False), ("H25S", "HI", "2025 summer", True),
-    ("H25W", "HI", "2025 supp", True),
-]
+PAPERS = []   # (id, cat, label, saved_for_mocks) - your past papers, if you want the papers grid
 MISSING = {"P26S", "M26S1", "M26S2", "B26S"}   # not downloaded yet (summer 2026, new curriculum)
 
 DEFAULT_CHATS = {}   # {cat: "https://claude.ai/chat/..."} - optional links to your subject chats
@@ -159,16 +147,18 @@ class Study:
                     caught=td.get("caught", 0))
 
     def exams(self, today):
+        """Only the exams you've set (command bar: exam physics 14 dec). Past ones drop off after a day."""
         out = []
-        names = [("P", "Physics"), ("MA", "Maths 1"), ("MA", "Maths 2"), ("B", "Biology"), ("HI", "History")]
-        for cat, name in names:
-            v = self.cfg["exams"].get(name)
+        for name, v in self.cfg["exams"].items():
             try:
-                d, tbc = dt.date.fromisoformat(v), False
+                d = dt.date.fromisoformat(v)
             except (TypeError, ValueError):
-                d, tbc = self.exam_day, True
+                continue
+            if (d - today).days < -1:
+                continue
+            cat = subject(name.split()[0]) or "R"
             out.append(dict(cat=cat, name=name, days=(d - today).days, date=d.strftime("%a %d %b").replace(" 0", " "),
-                            tbc=tbc))
+                            tbc=False))
         out.sort(key=lambda x: (x["days"], x["tbc"]))
         return out
 
@@ -201,55 +191,7 @@ LEITNER_DAYS = {1: 1, 2: 2, 3: 7}          # box 1 daily, box 2 every 2nd day, b
 MISTAKE_DAYS = [1, 3, 7]                   # a logged mistake comes back after 1, 3 and 7 days, then it's cleared
 
 # (id, cat, front, back, starting box) - starting boxes follow claude/tawjihi-boxes.md on 3 Nov
-SEED = [
-    ("P01", "P", "Resistance of a wire (ρ, L, A)", "R = ρ·L / A", 2),
-    ("P02", "P", "Terminal voltage of a battery giving current I", "ΔV = ε − I·r", 3),
-    ("P03", "P", "Series resistors: Req = ?", "Req = R1 + R2 + R3 + …", 3),
-    ("P04", "P", "Parallel resistors: Req = ?", "1/Req = 1/R1 + 1/R2 + …   (invert at the end · n identical → R/n)", 3),
-    ("P05", "P", "Electric power, 3 forms", "P = I·ΔV = I²·R = ΔV²/R", 3),
-    ("P06", "P", "Power the battery gives", "P = I·ε", 3),
-    ("P07", "P", "Energy used and its cost", "E = P·Δt     cost = E (kWh) × price", 3),
-    ("P08", "P", "Lamp rated 100 W, 200 V: R = ?", "R = V²/P = 200²/100 = 400 Ω", 3),
-    ("P09", "P", "Kirchhoff junction rule", "Σ I in = Σ I out", 3),
-    ("P10", "P", "Kirchhoff loop rule: signs", "Σ ΔV = 0 on a closed loop · with the current: −I·R · battery − → +: +ε", 3),
-    ("P11", "P", "Magnetic force on a moving charge", "F = q·v·B·sinθ   (θ between v and B · 0 when v ∥ B)", 2),
-    ("P12", "P", "Radius of a charge's circle in B", "r = m·v / (q·B)", 2),
-    ("P13", "P", "q/m in a mass spectrometer", "q/m = v / (B·r)", 2),
-    ("P14", "P", "Force on a current-carrying wire in B", "F = I·L·B·sinθ", 2),
-    ("P15", "P", "B of a long straight wire", "B = μ0·I / (2π·r) = 2×10⁻⁷·I / r   (no N)", 3),
-    ("P16", "P", "B at the centre of a circular coil (N turns, radius R)", "B = μ0·N·I / (2R)", 2),
-    ("P17", "P", "B at the centre of half a ring", "B = μ0·I / (4R)   (N = ½)", 2),
-    ("P18", "P", "B inside a solenoid", "B = μ0·N·I / L = μ0·n·I", 1),
-    ("P19", "P", "Force per metre between two parallel wires", "F/L = μ0·I1·I2 / (2π·d)   same direction → attract", 1),
-    ("P20", "P", "Torque on a coil in B", "τ = N·I·A·B·sinθ   (max when the coil plane ∥ B)", 3),
-    ("P21", "P", "μ0 = ?", "4π × 10⁻⁷ T·m/A", 2),
-    ("P22", "P", "1 tesla in other units", "1 T = 1 N / (A·m) = 1 N / (C·m/s)", 2),
-    ("M01", "MA", "d/dx (u / v) = ?", "(u′·v − u·v′) / v²", 3),
-    ("M02", "MA", "d/dx (u · v) = ?", "u′·v + u·v′", 2),
-    ("M03", "MA", "d/dx tan x  ·  d/dx sec x", "sec²x  ·  sec x·tan x", 2),
-    ("M04", "MA", "d/dx cot x  ·  d/dx csc x", "−csc²x  ·  −csc x·cot x", 2),
-    ("M05", "MA", "d/dx aˣ  ·  d/dx logₐx", "aˣ·ln a  ·  1 / (x·ln a)", 2),
-    ("M06", "MA", "∫ xⁿ dx  (n ≠ −1)", "xⁿ⁺¹ / (n + 1) + C", 3),
-    ("M07", "MA", "∫ 1/x dx", "ln|x| + C", 3),
-    ("M08", "MA", "∫ aˣ dx", "aˣ / ln a + C", 3),
-    ("M09", "MA", "∫ e^(ax) dx", "e^(ax) / a + C", 2),
-    ("M10", "MA", "∫ sec²x dx  ·  ∫ csc²x dx", "tan x + C  ·  −cot x + C", 2),
-    ("M11", "MA", "∫ sec x·tan x dx  ·  ∫ csc x·cot x dx", "sec x + C  ·  −csc x + C", 2),
-    ("M12", "MA", "∫ sin²x dx", "x/2 − sin2x / 4 + C", 3),
-    ("M13", "MA", "∫ cos²x dx", "x/2 + sin2x / 4 + C", 2),
-    ("M14", "MA", "∫ tan²x dx", "tan x − x + C   (tan²x = sec²x − 1)", 2),
-    ("M15", "MA", "sin A · cos B = ?", "½ [ sin(A − B) + sin(A + B) ]", 3),
-    ("M16", "MA", "∫ f′(x) / f(x) dx", "ln|f(x)| + C", 2),
-    ("M17", "MA", "∫ 1 / (x − 1)² dx", "−1 / (x − 1) + C   (not ln!)", 1),
-    ("M18", "MA", "Partial fractions form of x / (x − 1)²", "A / (x − 1) + B / (x − 1)²", 1),
-    ("M19", "MA", "2 / (x² − 1) in partial fractions", "1 / (x − 1) − 1 / (x + 1)", 1),
-    ("M20", "MA", "Distance vs displacement from v(t)", "displacement = ∫ v dt  ·  distance = ∫ |v| dt (split where v = 0)", 1),
-    ("M21", "MA", "Integration by parts", "∫ u dv = u·v − ∫ v du", 1),
-    ("M22", "MA", "Slope of the normal line", "−1 / m   (m = slope of the tangent)", 2),
-    ("M23", "MA", "Parametric dy/dx", "(dy/dt) / (dx/dt)", 2),
-    ("M24", "MA", "|ax + b| splits at", "x = −b / a", 3),
-    ("M25", "MA", "Definite integral by substitution", "change the limits to u (don't go back to x)", 2),
-]
+SEED = []     # (id, cat, front, back, box) - starter flash cards; add your own with: wrong physics question = answer
 
 
 class Cards:

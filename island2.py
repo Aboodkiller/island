@@ -319,6 +319,31 @@ def item_json(m, t, day, live):
     return out
 
 
+def big_countdown(m, today):
+    """The one big thing to count down to: your pick (life.json "big": title + date), else the study plan's exam_day
+    (titled by its "exam_name", or your pick's title). None = nothing to count down to: the island hides it."""
+    life = getattr(m, "life", None)
+    b = ((life.data.get("big") if life else None) or {})
+    title = str(b.get("title") or "").strip()
+    if b.get("date"):
+        try:
+            d = dt.date.fromisoformat(b["date"])
+            if d >= today:
+                return dict(title=title or "the big day", date=d.isoformat(), days=(d - today).days,
+                            label=f"{d.strftime('%a')} {d.day} {d.strftime('%b %Y')}", src="you")
+        except ValueError:
+            pass
+    st = m.study
+    if st.ok and st.data.get("exam_day"):
+        ex = st.exam_day
+        if ex >= today:
+            mk = st.mock_start if st.data.get("mock_start") else None
+            return dict(title=title or str(st.data.get("exam_name") or "exams"), date=ex.isoformat(), days=(ex - today).days,
+                        label=f"{ex.day} {ex.strftime('%b')}" + (f" · mocks from {mk.day} {mk.strftime('%b')}" if mk and mk > today else ""),
+                        src="plan")
+    return None
+
+
 def build_state(m, offset=0):
     today = m.today()
     now = dt.datetime.now()
@@ -337,9 +362,10 @@ def build_state(m, offset=0):
     d["water"] = {"ml": ml, "goal": goal, "chips": chips}
     dn, tot = m.completion(today)
     d["pct"] = int(round(100 * dn / tot)) if tot else 0
-    d["exam_days"] = max(0, m.days_to_exam(today))
-    ex, mk = m.study.exam_day, m.study.mock_start
-    d["exam_label"] = f"{ex.day} {ex.strftime('%b')} · mocks from {mk.day} {mk.strftime('%b')}"
+    big = big_countdown(m, today)
+    d["big"] = big
+    d["exam_days"] = big["days"] if big else None          # older pages read these two
+    d["exam_label"] = big["label"] if big else ""
     # day view
     day = today + dt.timedelta(days=offset)
     lbl = {0: "Today", 1: "Tomorrow", -1: "Yesterday"}.get(offset, "")
@@ -352,21 +378,29 @@ def build_state(m, offset=0):
     if m.study.ok:
         pace, prog = m.study.pace(today), m.study.progress()
         subs = []
-        for s in ("P", "M", "B", "H"):
+        for s in [k for k in ("P", "M", "B", "H") if m.study.items(k)]:
             rem, avail = pace[s]
             dn_, tot_ = prog[s]
             und = m.study.undone(s)
-            status = "on track" if rem <= avail else ("tight" if rem <= avail + 1 else f"behind {rem - avail}")
-            subs.append(dict(s=s, cat=core.SUBJECT_CAT[s], name=SUBJ[s], done=dn_, total=tot_, rem=rem, avail=avail,
+            dated = bool(m.study.data.get("exam_day") or m.study.data.get("mock_start"))
+            status = ("no exam date" if not dated else "on track" if rem <= avail else
+                      ("tight" if rem <= avail + 1 else f"behind {rem - avail}"))
+            subs.append(dict(s=s, cat=core.SUBJECT_CAT[s], name=m.study.subject_name(s), done=dn_, total=tot_, rem=rem, avail=avail,
                              status=status, next=und[0]["text"] if und else "all sessions done"))
         cp = m.study.next_checkpoint(today)
         week = []
         for k in range(7):
             dd = today + dt.timedelta(days=k)
             week.append(dict(label="Today" if k == 0 else core.DAY_EN[dd.weekday()], today=k == 0,
-                             items=[dict(time=t["time"], name=SUBJ.get(t["s"], t["s"]), cat=core.SUBJECT_CAT.get(t["s"], "R"),
+                             items=[dict(time=t["time"], name=m.study.subject_name(t["s"]), cat=core.SUBJECT_CAT.get(t["s"], "R"),
                                          done=t["done"]) for t in m.study.tasks_for(dd, today)]))
-        d["study"] = dict(days_left=(m.study.mock_start - today).days, subjects=subs, week=week,
+        try:
+            tday = [item_json(m, t, today, True) for t in m.items(today, today) if t.get("src") == "S"]
+        except Exception:
+            tday = []
+        ms = m.study.mock_start if m.study.data.get("mock_start") else m.study.exam_day
+        d["study"] = dict(days_left=max(0, (ms - today).days), subjects=subs, week=week, today=tday,
+                          mocks=bool(m.study.data.get("mock_start")),
                           checkpoint=dict(date=dt.date.fromisoformat(cp[0]).strftime("%a %d %b").replace(" 0", " "), text=cp[1]) if cp else None)
     else:
         d["study"] = None
@@ -1626,6 +1660,9 @@ class Host(QWidget):
         self._streak_from = time.time()
         try:
             self.life = island_life.Life()
+            self.model.life = self.life                 # the big countdown reads it
+            if "big" not in self.life.data and os.path.basename(os.path.dirname(self.model.study.path)).lower() == "tawjihi":
+                self.life.set_big("Tawjihi")             # the plan's exam_day, titled (once; "big ..." changes it)
         except Exception as e:
             print("life.json:", e)
             self.life = None
@@ -2686,6 +2723,23 @@ class Host(QWidget):
             self.copy_today()
         elif name == "cmd_open":
             self.open_cmd(str(arg or ""))
+        elif name == "study_tick":
+            today = m.today()
+            items = {t["key"]: t for t in m.items(today)}
+            if arg in items:
+                m.toggle(items[arg], today)
+            self.push_data()
+        elif name == "big_pick" and self.life is not None:
+            c = next((x for x in self.life.data.get("countdowns", []) if x.get("id") == str(arg)), None)
+            b = self.life.data.get("big") or {}
+            if c and b.get("date") == c.get("date") and b.get("title") == c.get("title"):
+                self.life.set_big(None, None)
+            elif c:
+                self.life.set_big(c.get("title"), c.get("date"))
+            self.push_life()
+            self.push_data()
+        elif name == "big_set":
+            self.open_cmd("big ")
         elif name == "study_chat":
             self.open_chat(str(arg))
         elif name == "study_mock":
@@ -4244,8 +4298,9 @@ class Host(QWidget):
         n = self.cards.summary(today)["n"] if self.cards else 0
         if n:
             line2.append(f"{n} card{'s' if n != 1 else ''} due")
-        days = self.model.days_to_exam(today)
-        self.notify(f"brief-{today}", "R", "good morning", f"{today.strftime('%A')} · {days} days to Tawjihi",
+        big = big_countdown(self.model, today)
+        self.notify(f"brief-{today}", "R", "good morning",
+                    f"{today.strftime('%A')}" + (f" · {big['days']} days to {big['title']}" if big else ""),
                     " · ".join(bits) or "No study blocks today.", [("Let's go", None)], 90, kind="info",
                     body2=" · ".join(line2))
 
@@ -4284,6 +4339,26 @@ class Host(QWidget):
         if self.life is None:
             return "nomatch"
         today = self.model.today()
+        m = re.match(r"^(?:big|main|countdown to)\s+(.+)$", low)
+        if m:
+            rest = t.split(None, 1)[1].strip()
+            if low.startswith("countdown to"):
+                rest = rest.split(None, 1)[1] if len(rest.split(None, 1)) > 1 else ""
+            if rest.lower() in ("off", "clear", "none", "remove", "stop"):
+                self.life.set_big(None, None)
+                self.push_life()
+                self.push_data()
+                return self.hud("ok", "Big countdown off", ms=1400)
+            what, d = island_life.split_date(rest, today, island_study.parse_date)
+            if not d:
+                self.life.set_big(rest[:40], None)          # just a new name for the study plan's exam day
+                self.push_life()
+                self.push_data()
+                return self.hud("ok", f"Counting down to {rest[:40]}", ms=1800)
+            self.life.set_big(what[:40] or "the big day", d.isoformat())
+            self.push_life()
+            self.push_data()
+            return self.hud("ok", f"{(d - today).days} days to {what[:40]}", r=d.strftime('%a %d %b').replace(' 0', ' '), ms=2400)
         m = re.match(r"^(deadline|due|countdown|cd)\s+(.+)$", low)
         if m:
             what, d = island_life.split_date(t.split(None, 1)[1], today, island_study.parse_date)
@@ -4333,7 +4408,7 @@ class Host(QWidget):
         d = build_state(self.model, 0)
         out = [f"My day (from the island) · {today.strftime('%A %d %b %Y')} · {self.t12(now)}"]
         out.append(f"Plan done: {d.get('pct', 0)}% · streak {d.get('fire', 0)} · gym streak {d.get('gym', 0)} · "
-                   f"{self.model.days_to_exam(today)} days to Tawjihi")
+                   + (lambda b: f"{b['days']} days to {b['title']}" if b else "no countdown set")(big_countdown(self.model, today)))
         w = d.get("water") or {}
         if w.get("goal"):
             out.append(f"Water: {w['ml'] / 1000:.2f} / {w['goal'] / 1000:.1f} L")
@@ -4934,6 +5009,14 @@ class Host(QWidget):
         if m:
             cat = island_study.subject(m.group(1))
             return self.start_mock(cat) if cat else self.hud("info", "mock physics · maths · bio · history", ms=2200)
+        m = re.match(r"^exam\s+(?!(?:physics|phy|p|maths?\s*[12]?|m\s*[12]|bio(?:logy)?|b|history|hist|h)\s)(.+)$", low)
+        if m:                                   # any other exam: "exam calculus midterm 24 nov"
+            what, d = island_life.split_date(t.split(None, 1)[1], today, island_study.parse_date)
+            if not d or not what:
+                return self.hud("info", "exam calculus 24 nov", ms=2000)
+            self.study.set_exam(what[:30], d)
+            self.push_study(True)
+            return self.hud("ok", f"{what[:30]}: {d.strftime('%a %d %b').replace(' 0', ' ')}", r=f"{(d - today).days} days", ms=2200)
         m = re.match(r"^exam\s+(physics|phy|p|maths?\s*[12]?|m\s*[12]|bio(?:logy)?|b|history|hist|h)\s+(.+)$", low)
         if m:
             w = m.group(1).replace(" ", "")
@@ -5701,7 +5784,7 @@ class Host(QWidget):
     CANON_FIRST = {"w", "water", "+", "t", "timer", "sw", "stopwatch", "stop", "cancel", "n", "note", "idea", "clip", "clips",
                    "clipboard", "o", "open", "v", "vol", "b", "bright", "brightness", "mic", "lock", "screens", "screen",
                    "monitors", "focus", "mock", "exam", "score", "chat", "wrong", "swap", "switch", "move", "unswap", "unmove",
-                   "todo", "deadline", "habit", "countdown", "dash", "dashboard", "player", "=", "snip", "screenshot", "widgets"}
+                   "todo", "deadline", "habit", "countdown", "big", "dash", "dashboard", "player", "=", "snip", "screenshot", "widgets"}
 
     def natural(self, t):
         """A sentence (voice, or typed like you'd say it) -> the island's own command. Short commands pass straight through."""
@@ -5865,11 +5948,14 @@ class Host(QWidget):
         if what == "exam":                  # "how many days left" / "كم يوم ضايل" (read only)
             m, today = self.model, self.model.today()
             m.reload()                                        # cheap: only re-reads a plan file that changed
-            n = max(0, m.days_to_exam(today))
-            mk = m.study.mock_start if m.study.ok else None
+            big = big_countdown(m, today)
+            if not big:
+                return self.hud("cal", "No countdown yet", r="big <what> <date>", ms=2600)
+            n = big["days"]
+            mk = m.study.mock_start if (big["src"] == "plan" and m.study.data.get("mock_start")) else None
             left = (mk - today).days if mk else -1
             r = ("mocks start today" if left == 0 else "mocks start tomorrow" if left == 1 else f"mocks in {left} days" if left > 1 else "")
-            return self.hud("cal", f"{n} day{'' if n == 1 else 's'} to Tawjihi", r=r + (f" · {mk.day} {mk.strftime('%b')}" if r else ""), ms=3000)
+            return self.hud("cal", f"{n} day{'' if n == 1 else 's'} to {big['title']}", r=r + (f" · {mk.day} {mk.strftime('%b')}" if r else ""), ms=3000)
         if what == "water":                 # "how much water" / "كم شربت"
             ml, goal = self.model.water(self.model.today())
             if not goal:

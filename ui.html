@@ -316,6 +316,9 @@ body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;anima
 .setc{background:var(--card);border-radius:18px;padding:3px 6px}
 .setr{display:flex;align-items:center;gap:12px;padding:10px 8px}
 .setr+.setr{border-top:1px solid var(--line)}
+.setr.wide{flex-direction:column;align-items:stretch;gap:9px}
+.seg.wrap{flex-wrap:wrap;flex:1 1 auto;align-self:flex-start;max-width:100%}
+.setr .seg:not(.wrap){max-width:62%;overflow-x:auto;scrollbar-width:none}
 .sw{width:38px;height:22px;border-radius:11px;background:#2a2f40;position:relative;cursor:pointer;flex:none;transition:background .25s}
 .sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .32s var(--spring)}
 .sw.on{background:var(--ok)}
@@ -607,6 +610,65 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 @media (max-width:1300px){.dgrid{grid-template-columns:1fr 1.2fr}.dgrid #d-side{display:none}}
 /* study */
 .exr{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+/* study tab v2 (r27): what to do now, then everything else small */
+.shero{display:flex;gap:14px;align-items:center;padding:16px;border-radius:20px;margin:2px 0 10px;
+  background:linear-gradient(150deg,color-mix(in srgb,var(--c) 20%,var(--card,#14161c)),var(--card,#14161c) 75%);border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+.shero.guard{animation:gpulse 1.2s ease-in-out infinite}
+.shero .bd{flex:none;border-radius:16px}
+.shk{font-size:11px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--c)}
+.sht{font-size:16.5px;font-weight:750;line-height:1.3;color:#fff}
+.sht.ar,.shd.ar,.sgx.ar{direction:rtl;text-align:right;font-family:var(--ar,inherit)}
+.shd{font-size:12.5px;color:var(--mut)}
+.shm{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.shic{display:grid;place-items:center;width:50px;height:50px;border-radius:16px;flex:none;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent)}
+.sacts{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.sbig{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:17px;font-size:13px;font-weight:750;cursor:pointer;
+  background:rgba(255,255,255,.08);color:#e5e7eb;transition:background .15s,transform .12s}
+.sbig:hover{background:rgba(255,255,255,.15)}
+.sbig:active{transform:scale(.95)}
+.sbig.go{background:var(--c,#a78bfa);color:#0b0c10}
+.sbig.go:hover{filter:brightness(1.1)}
+.sbig.ok{background:rgba(74,222,128,.16);color:#86efac}
+.sbig.ic{width:34px;padding:0;justify-content:center}
+.stoday{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.sti{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:12px;font-size:11.5px;font-weight:700;cursor:pointer;
+  color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.sti i{display:grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--c);color:#0b0c10}
+.sti.done{opacity:.55;text-decoration:line-through}
+.sti.done i{background:var(--c)}
+.sti.now{box-shadow:0 0 0 1.5px var(--c) inset}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sgt{display:flex;gap:11px;align-items:center;padding:11px 12px;border-radius:16px;background:var(--card);min-width:0}
+.sgp{font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums}
+.sgn{font-size:13.5px;font-weight:750}
+.sgs{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+.sgs i{width:6px;height:6px;border-radius:50%}
+.sgx{font-size:11.5px;color:var(--mut)}
+.sfw{padding:2px 2px 6px}
+.sfb{display:flex;gap:3px;height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.06)}
+.sfb b{display:block;height:100%;min-width:4px}
+.sfl{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:11.5px;color:var(--mut)}
+.sfl i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.smore{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;margin:8px 0 4px;border-radius:12px;font-size:12px;font-weight:700;color:var(--mut);cursor:pointer;background:rgba(255,255,255,.04)}
+.smore:hover{background:rgba(255,255,255,.08);color:#fff}
+.smore span{transition:transform .25s}
+.sempty{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:34px 22px;color:var(--mut)}
+.sempty b{font-size:16px;color:#fff}
+.sempty span{font-size:13px;line-height:1.45;max-width:330px}
+.sempty .sbig{margin-top:6px}
+.bigset{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;cursor:pointer;color:var(--mut);background:rgba(255,255,255,.05)}
+.bigset b{font-size:13px;color:#fff}
+.bigset span{font-size:11px}
+.bigset:hover{background:rgba(255,255,255,.1)}
+.cdc{cursor:pointer}
+.welc{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:18px;margin:2px 0 10px;
+  background:linear-gradient(150deg,rgba(167,139,250,.18),var(--card,#14161c) 70%);border:1px solid rgba(167,139,250,.3)}
+.wlt{font-size:14.5px}
+.wlr{display:flex;gap:11px;align-items:center}
+.wlr b{font-size:13px}
+.wlr span{font-size:11.5px;color:var(--mut)}
+.wli{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;flex:none;color:#c4b5fd;background:rgba(167,139,250,.14)}
+.cdc.isbig{box-shadow:0 0 0 1.5px #fbbf24 inset}
 .exc{display:flex;align-items:baseline;gap:5px;padding:6px 10px;border-radius:12px;background:color-mix(in srgb,var(--c) 11%,transparent);border:1px solid color-mix(in srgb,var(--c) 22%,transparent);cursor:pointer}
 .exc b{font-size:16px;font-weight:800;color:var(--c);font-variant-numeric:tabular-nums}
 .exc span{font-size:11.5px;color:var(--mut)}
@@ -1931,6 +1993,12 @@ function clockHTML(key, ap) {
 const GEAR = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
 const BELL = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>`;
 const TABS = [["Today","Today"],["Study","Study"],["Body","Body"],["System","System"],["Alerts",BELL],["Settings",GEAR]];
+function simpleOn() { return !!(S.settings && S.settings.values && S.settings.values.simple); }
+function tabsNow() {              // simple mode: only tabs that have something in them, no System tab
+  if (!simpleOn()) return TABS;
+  const d = S.data || {};
+  return TABS.filter(([t]) => t === "System" ? false : t === "Study" ? !!d.study : t === "Body" ? !!d.body : true);
+}
 const ago = m => m < 60 ? m + "m" : m < 2880 ? Math.round(m / 60) + "h" : Math.round(m / 1440) + "d";
 const $ = id => document.getElementById(id);
 const isl = document.getElementById("isl");
@@ -2422,8 +2490,9 @@ const wTile = (cls, a, v, title, inner) => `<div class="tile ${cls}"${a ? ` data
 const wRing = (v, col, ic, txt, size = 38) => `<div class="dv ${v == null ? "na" : ""}">${ring(size, v == null ? 0 : Math.min(1, v), v == null ? "rgba(255,255,255,.18)" : col, 3.2, `<span class="dv-i">${hico(ic, 15)}</span>`)}<b>${txt}</b></div>`;
 const tCol = v => v >= 85 ? "#fb7185" : v >= 70 ? "#fbbf24" : "#4ade80";
 const WIDGETS = {
-  tawjihi: ["Tawjihi countdown", "book", () => { const d = S.data; if (!d || d.exam_days == null) return ""; const due = S.cards && S.cards.n;
-    return wTile("", "dw_panel", "Study", "Study", `<b class="tj-n">${roll("tjn", String(d.exam_days))}</b><span class="tl">days to Tawjihi</span><span class="ts ell">${due ? `${due} card${due > 1 ? "s" : ""} due` : esc(d.exam_label || "")}</span>`); }],
+  tawjihi: ["Big countdown", "book", () => { const d = S.data, B = d && d.big; const due = S.cards && S.cards.n;
+    if (!B) return wTile("", "big_set", null, "Set a countdown", `<b class="tj-n" style="opacity:.35">+</b><span class="tl">big countdown</span><span class="ts">exam, trip, launch…</span>`);
+    return wTile("", "dw_panel", "Study", B.title, `<b class="tj-n">${roll("tjn", String(B.days))}</b><span class="tl ell">days to ${esc(B.title)}</span><span class="ts ell">${due ? `${due} card${due > 1 ? "s" : ""} due` : esc(B.label || "")}</span>`); }],
   qawi: ["QAWI calories", "spark", () => { const F = S.fit; if (!F || !F.ok || !F.t) return "";
     const left = F.t.kcal - F.kcal, pc = (v, m) => m > 0 ? Math.min(100, v / m * 100) : 0;
     return wTile("qw", "dw_panel", "Body", `QAWIFit · ${F.kcal} of ${F.t.kcal} kcal`, `<span class="qw-k">QAWI</span><b class="qw-n ${left < 0 ? "over" : ""}">${roll("qwn", Math.abs(left).toLocaleString())}</b><span class="ts">${left >= 0 ? "kcal left" : "kcal over"}</span>
@@ -2474,7 +2543,7 @@ const WIDGETS = {
     return wTile("w2 wmu", null, null, m.title + (m.artist ? " · " + m.artist : ""), `<div class="wmu-a" data-a="music" style="${m.art ? "background-image:var(--art)" : ""}"></div><div class="wmu-t"><span class="qw-k" style="color:#1ed760">${m.playing ? "PLAYING" : "PAUSED"}</span><b class="ell" dir="auto">${esc(m.title)}</b><span class="ts ell" dir="auto">${esc(m.artist || m.app || "")}</span>
       <div class="wmu-c"><span data-a="media_prev">${I.prev(13)}</span><span data-a="media_toggle">${m.playing ? I.pause(15) : I.play(15)}</span><span data-a="media_next">${I.next(13)}</span></div></div>`); }],
   exams: ["Exams", "cal", () => { const E = S.study && S.study.exams; if (!E || !E.length) return "";
-    return wTile("wex", "dw_panel", "Study", "Tawjihi exams", `<span class="qw-k" style="color:#a78bfa">EXAMS</span>${E.slice(0, 3).map(e => `<div class="wex-r"><i style="background:${CAT[e.cat] || "#8b95b5"}"></i><span class="ell">${esc(e.name)}</span><b class="${!e.tbc && e.days <= 7 ? "hot" : ""}">${e.tbc ? "?" : e.days + "d"}</b></div>`).join("")}<span class="ts" style="margin-top:auto">${esc(E[0].date || "")}</span>`); }],
+    return wTile("wex", "dw_panel", "Study", "Exams", `<span class="qw-k" style="color:#a78bfa">EXAMS</span>${E.slice(0, 3).map(e => `<div class="wex-r"><i style="background:${CAT[e.cat] || "#8b95b5"}"></i><span class="ell">${esc(e.name)}</span><b class="${!e.tbc && e.days <= 7 ? "hot" : ""}">${e.tbc ? "?" : e.days + "d"}</b></div>`).join("")}<span class="ts" style="margin-top:auto">${esc(E[0].date || "")}</span>`); }],
   inputs: ["Inputs today", "kbd", () => { const t = S.taps; if (!t || !t.h) return ""; const hr = new Date().getHours(), H = t.h.slice(0, hr + 1), mx = Math.max(1, ...H);
     return wTile("", null, null, "Keys + clicks today (only counted, never which key)", `<span class="qw-k" style="color:#22d3ee">INPUTS</span><b class="wx2-t" style="font-size:24px">${t.n >= 10000 ? (t.n / 1000).toFixed(1) + "k" : t.n.toLocaleString()}</b><span class="tl">keys + clicks today</span><div class="win-h">${H.map((v, i) => `<i class="${i === hr ? "now" : ""}" style="height:${Math.max(8, v / mx * 100).toFixed(0)}%"></i>`).join("")}</div>`); }],
   bigclock: ["Big clock", "timer", () => { const n = new Date(), P = S.prayer && S.prayer.on && S.prayer.next, f = focus(), it = f.cur || f.nxt;
@@ -2929,15 +2998,17 @@ function renderPanel(force) {
       <div class="pane" id="p-Today"></div><div class="pane" id="p-Study"></div><div class="pane" id="p-Body"></div><div class="pane" id="p-System"></div><div class="pane" id="p-Alerts"></div><div class="pane" id="p-Settings"></div></div></div>`;
     if (slRO) { slRO.disconnect(); slRO.observe($("ph")); }   // the panel is still growing: re-place the tab highlight as it does
   }
-  const d = S.data, day = d.view;
+  const d = S.data, day = d.view, simple = simpleOn();
+  if (!tabsNow().some(([t]) => t === S.tab)) S.tab = "Today";
   let h = `<div class="row"><span class="t" style="font-size:13.5px">${esc(day.label)}</span>
       <span class="mut" style="font-size:12px">${T(new Date().toTimeString().slice(0,5))}</span><div class="sp"></div>
       ${S.wx ? `<span class="mut" style="font-size:12px;margin-right:6px">${S.wx.icon} ${Math.round(S.wx.t)}° ${esc(S.wx.city||"")}</span>` : ""}
-      <div class="nav"><span data-a="day" data-v="-1">‹</span><span data-a="day" data-v="0" style="font-size:9px">●</span><span data-a="day" data-v="1">›</span><span data-a="compact" title="${S.compact ? "Full island" : "Compact island"}" style="font-size:11px">${S.compact ? "⤢" : "⤡"}</span><span data-a="close">⌃</span></div></div>
-    <div class="row" style="gap:12px"><div class="big">${roll("exam", d.exam_days)}</div><div class="col"><span class="t" style="font-size:13.5px">days to Tawjihi</span><span class="mut" style="font-size:11.5px">${esc(d.exam_label)}</span></div><div class="sp"></div>
-      <div class="col" style="align-items:center;gap:1px"><span class="ico" style="color:#ff7a4d">${I.dumb()}${d.gym}</span><span class="dim" style="font-size:10px">gym</span></div>
+      <div class="nav"><span data-a="day" data-v="-1">‹</span><span data-a="day" data-v="0" style="font-size:9px">●</span><span data-a="day" data-v="1">›</span>${simple ? "" : `<span data-a="compact" title="${S.compact ? "Full island" : "Compact island"}" style="font-size:11px">${S.compact ? "⤢" : "⤡"}</span>`}<span data-a="close">⌃</span></div></div>
+    <div class="row" style="gap:12px">${d.big ? `<div class="big" data-a="big_set" title="big &lt;what&gt; &lt;date&gt; to change it">${roll("exam", d.big.days)}</div><div class="col" data-a="big_set" style="cursor:pointer;min-width:0"><span class="t ell" style="font-size:13.5px">days to ${esc(d.big.title)}</span><span class="mut" style="font-size:11.5px">${esc(d.big.label)}</span></div>`
+      : `<div class="bigset" data-a="big_set">${hico("cal", 18)}<div class="col"><b>Count down to something</b><span>exam, trip, launch… tap to set</span></div></div>`}<div class="sp"></div>
+      ${simple && !d.gym ? "" : `<div class="col" style="align-items:center;gap:1px"><span class="ico" style="color:#ff7a4d">${I.dumb()}${d.gym}</span><span class="dim" style="font-size:10px">gym</span></div>`}
       ${ring(50, day.pct/100, day.pct>=100?"#4ade80":"#a78bfa", 4.5, `<span style="font-size:12px">${day.pct}%</span>`)}</div>
-    <div class="tabs" id="tabs"><div class="slider" id="slider"></div>${TABS.map(([t,l])=>`<div data-a="tab" data-v="${t}" class="${t===S.tab?"on":""} ${t==="Settings"||t==="Alerts"?"gear":""}" title="${t === "Alerts" ? "Notification history" : t}">${l}${t === "Study" && S.cards && S.cards.n ? `<i class="tbadge">${S.cards.n}</i>` : ""}</div>`).join("")}</div>`;
+    <div class="tabs" id="tabs"><div class="slider" id="slider"></div>${tabsNow().map(([t,l])=>`<div data-a="tab" data-v="${t}" class="${t===S.tab?"on":""} ${t==="Settings"||t==="Alerts"?"gear":""}" title="${t === "Alerts" ? "Notification history" : t}">${l}${t === "Study" && S.cards && S.cards.n ? `<i class="tbadge">${S.cards.n}</i>` : ""}</div>`).join("")}</div>`;
   setSection("ph", h);
   moveSlider();
   for (const [t] of TABS) $("p-"+t).classList.toggle("on", t === S.tab);
@@ -3033,7 +3104,7 @@ function lifeSec() {
   const hb = L.habits || [];
   if (hb.length) h += `<div class="sec"><span>Habits</span><span>tap when done · ${addLk("habit ", "habit read 10 pages")}</span></div><div class="hbs">${hb.map(x => `<span class="hb ${x.today ? "on" : ""}" data-a="life_toggle" data-v="habits|${esc(x.id)}">${x.today ? "✓ " : ""}${esc(x.name)}${x.streak ? `<b>${x.streak}</b>` : ""}</span>`).join("")}</div>`;
   const cd = L.countdowns || [];
-  if (cd.length) h += `<div class="sec"><span>Countdowns</span><span>${addLk("countdown ", "countdown midterm 20 nov")}</span></div><div class="hbs">${cd.map(x => `<span class="cdc" title="${esc(x.date)}${x.tbc ? " · date not confirmed" : ""}"><b>${x.days}d</b> ${esc(x.title)}${x.tbc ? " ?" : ""}</span>`).join("")}</div>`;
+  if (cd.length) h += `<div class="sec"><span>Countdowns</span><span>tap = the big one · ${addLk("countdown ", "countdown midterm 20 nov")}</span></div><div class="hbs">${cd.map(x => `<span class="cdc ${x.big ? "isbig" : ""}" data-a="big_pick" data-v="${esc(x.id)}" title="${esc(x.date)}${x.tbc ? " · date not confirmed" : ""}${x.big ? " · the big countdown (tap to unpin)" : " · tap to make it the big countdown"}"><b>${x.days}d</b> ${esc(x.title)}${x.tbc ? " ?" : ""}</span>`).join("")}</div>`;
   return h;
 }
 function addLk(pre, eg, label) {   // opens the command bar with the command typed in, cursor at the end
@@ -3084,9 +3155,16 @@ function dayStrip(v) {
   if (v.offset === 0) { const d = new Date(); let nm = d.getHours() * 60 + d.getMinutes(); if (nm < 240) nm += 1440; if (nm >= lo && nm <= hi) h += `<span class="nw" style="left:${P(nm)}%"><i>now</i></span>`; }
   return h + `</div>`;
 }
+function welcomeCard() {          // simple mode, first days: the 4 things worth knowing, then it goes away
+  const V = S.settings && S.settings.values; if (!V || !V.simple || V.welcomed) return "";
+  const r = (ic, a, b) => `<div class="wlr"><span class="wli">${hico(ic, 17)}</span><div class="col"><b>${a}</b><span>${b}</span></div></div>`;
+  return `<div class="welc"><div class="row"><b class="wlt">New here? 4 things, that's it</b><div class="sp"></div><span class="sbig ok" data-a="set" data-v="welcomed" data-x="true">Got it</span></div>
+    ${r("cursor", "Hover the island", "a quick look: music, next thing, widgets")}${r("cal", "Click it", "your whole day, tick things off")}
+    ${r("grid", "Right-click it", "the menu: timer, water, settings…")}${r("kbd", "Win + Alt + Space", "type anything: <i>timer 25</i> · <i>water 500</i> · <i>big exam 20 jan</i>")}</div>`;
+}
 function paneToday() {
   const d = S.data, v = d.view, ed = v.editable;
-  let h = v.offset === 0 ? prayStrip() + lifeTop() : "";
+  let h = (v.offset === 0 ? welcomeCard() : "") + (v.offset === 0 ? prayStrip() + lifeTop() : "");
   if (d.water.goal && v.offset === 0) {
     const w = d.water, L2 = x => (x / 1000).toFixed(2).replace(/\.?0+$/, "");     // 5.14, 2.5, 3, 0 (same precision both sides)
     h += `<div class="wcard"><div class="row">${I.drop("#22d3ee",17)}<span class="t" style="font-size:15px">${L2(w.ml)} / ${L2(w.goal)} L</span><div class="sp"></div>
@@ -3145,6 +3223,7 @@ function papersSec() {
   let h = `<div class="sec"><span>Past papers</span><span>tap one to save its score</span></div><div class="ppw">`;
   for (const c of ["P", "MA", "B", "HI"]) {
     const ps = x.papers.filter(p => p.cat === c), done = ps.filter(p => p.score != null).length;
+    if (!ps.length) continue;
     h += `<div class="ppr"><div class="row" style="gap:8px"><span class="t" style="font-size:12.5px;color:${CAT[c]}">${CATNAME[c]}</span><span class="ds">${done}/${ps.length}</span><div class="sp"></div>
         <span class="sbtn" data-a="study_mock" data-v="${c}" title="Start a timed mock at the real exam length">mock ▸</span></div><div class="ppc">`;
     for (const p of ps) {
@@ -3166,25 +3245,70 @@ function flashCard(where) {
     ${open ? `<div class="fb">${esc(c.back)}</div><div class="row fa"><span data-a="card_ans" data-v="${esc(c.id)}|0" class="bad">✗ missed</span><span data-a="card_ans" data-v="${esc(c.id)}|1" class="ok">✓ got it</span></div>`
            : `<div class="ds fh">say it in your head, then tap</div>`}</div>`;
 }
-function paneStudy() {
-  const st = S.data.study; if (!st) return `<div class="mut" style="padding:20px">Study plan not found.</div>`;
-  const C = S.cards;
-  let rv = "";
-  if (C) rv = `<div class="sec"><span>Review cards</span><span>${C.n ? C.n + " due" : "all done today"} · box 1: ${C.boxes[1] || 0} · 2: ${C.boxes[2] || 0} · 3: ${C.boxes[3] || 0}${C.mistakes ? " · " + C.mistakes + " mistakes" : ""}</span></div>`
-     + (C.n ? flashCard("tab") : `<div class="ds" style="padding:2px 6px 6px">Nothing due. Log one you got wrong: <b>wrong physics question = answer</b></div>`);
-  let h = studyTop() + rv + `<div class="sec"><span>Pace until mocks</span><span>${st.days_left} days of new material</span></div>`;
-  for (const s of st.subjects) {
-    const c = CAT[s.cat], col = s.status==="on track" ? "var(--ok)" : s.status==="tight" ? "var(--warn)" : "var(--bad)";
-    h += `<div class="subj"><div class="row">${badge(s.cat, 30)}<div class="col" style="flex:1"><span class="t" style="font-size:14.5px">${s.name}</span>
-        <span class="ds">${s.done}/${s.total} sessions · ${s.rem} left · ${s.avail} slots</span></div>
-        ${S.study && S.study.chats && S.study.chats[s.cat] ? `<span class="sbtn ic" data-a="study_chat" data-v="${s.cat}" title="Open the ${esc(s.name)} chat">${CHAT_I}</span>` : ""}<span class="chip" style="background:color-mix(in srgb,${col} 16%,transparent);color:${col}">${s.status}</span></div>
-      <div class="bar" style="margin:10px 0 8px"><b style="width:${s.total?s.done/s.total*100:0}%;background:${c}"></b></div>
-      <div class="ar ell" style="font-size:13px;color:#c9ccd8">${esc(s.next)}</div></div>`;
+const FOCUS_W = {P: "physics", MA: "maths", B: "bio", HI: "history"};
+function studyHero(st) {
+  const L = st.today || [], pm = pomoNow();
+  const cur = L.find(i => i.state === "now" && !i.done), nxt = L.find(i => !i.done && (i.state === "next" || i.state === "late"));
+  const it = cur || nxt, chat = c => S.study && S.study.chats && S.study.chats[c] ? `<span class="sbig ic" data-a="study_chat" data-v="${c}" title="Open the chat">${CHAT_I}</span>` : "";
+  const ar = t => AR.test(t || "") ? "ar" : "";
+  if (pm && S.pomo) return `<div class="shero ${S.pomo.guard ? "guard" : ""}" style="--c:${pm.col}">${ring(78, pm.frac, pm.col, 6, `<b class="shm">${Math.ceil(pm.left)}</b>`)}
+      <div class="col" style="flex:1;gap:5px;min-width:0"><span class="shk">${pm.phase === "break" ? "Break" : "Focus"} · ${esc(S.pomo.name)} · ${Math.ceil(pm.left)} min left</span>
+      <span class="sht">${S.pomo.guard ? "Close " + esc(S.pomo.guard) : pm.phase === "break" ? "Stand up, drink water. Back in a bit." : "Just this one thing."}</span>
+      ${it ? `<span class="shd ell ${ar(it.desc)}">${esc(it.desc)}</span>` : ""}
+      <div class="sacts">${it ? `<span class="sbig ok" data-a="study_tick" data-v="${esc(it.key)}">${hico("ok", 15)}Done</span>` : ""}<span class="sbig" data-a="scmd" data-v="focus stop">Stop</span></div></div></div>`;
+  if (it) {
+    const when = it.state === "now" ? `Now · ${fmtH(it.left || 0)} left` : it.state === "late" ? `Missed · was ${T(it.time)}` : `Next · ${T(it.time)}${it.until != null ? " · in " + fmtH(it.until) : ""}`;
+    return `<div class="shero" style="--c:${CAT[it.cat] || "#a78bfa"}">${badge(it.cat, 50)}
+      <div class="col" style="flex:1;gap:5px;min-width:0"><span class="shk">${when} · ${esc(it.title)}</span>
+      <span class="sht ${ar(it.desc)}">${esc(it.desc)}</span>
+      <div class="sacts"><span class="sbig go" data-a="scmd" data-v="focus ${FOCUS_W[it.cat] || ""}">${hico("play2", 14)}Start focus</span><span class="sbig ok" data-a="study_tick" data-v="${esc(it.key)}">${hico("ok", 15)}Done</span>${chat(it.cat)}</div></div></div>`;
   }
-  h += papersSec();
-  if (st.checkpoint) h += `<div class="sec"><span>Next checkpoint</span><span>${esc(st.checkpoint.date)}</span></div><div class="wcard ar" style="font-size:13px">${esc(st.checkpoint.text)}</div>`;
-  h += `<div class="sec"><span>Next 7 days</span></div>`;
-  for (const w of st.week) h += `<div class="week"><span class="d" style="${w.today?"color:#fff":""}">${w.label}</span>${w.items.map(i=>`<span class="wk" style="background:${bg(CAT[i.cat],i.done?10:20)};color:${i.done?"var(--dim)":CAT[i.cat]}">${T(i.time||"", true)} ${i.name}</span>`).join("")}</div>`;
+  if (L.length && L.every(i => i.done)) return `<div class="shero" style="--c:#4ade80"><span class="shic">${hico("ok", 26)}</span><div class="col" style="gap:4px"><span class="shk">Today</span><span class="sht">All study done. Go rest.</span></div></div>`;
+  const nd = (st.week || []).find(w => !w.today && w.items.length);
+  return `<div class="shero" style="--c:#94a3b8"><span class="shic">${hico("moon", 24)}</span><div class="col" style="gap:4px"><span class="shk">Today</span><span class="sht">No study today</span>${nd ? `<span class="ds">Next: ${esc(nd.label)} · ${nd.items.map(i => esc(i.name)).join(", ")}</span>` : ""}</div></div>`;
+}
+function studyStrip(st) {
+  const L = st.today || []; if (L.length < 2) return "";
+  return `<div class="stoday">${L.map(i => `<span class="sti ${i.done ? "done" : ""} ${i.state === "now" ? "now" : ""}" style="--c:${CAT[i.cat] || "#94a3b8"}" data-a="study_tick" data-v="${esc(i.key)}" title="${esc(i.desc)} · tap to tick"><i>${i.done ? hico("ok", 11) : ""}</i>${T(i.time || "", true)} ${esc(i.title)}</span>`).join("")}</div>`;
+}
+function studyGrid(st) {
+  if (!st.subjects.length) return "";
+  return `<div class="sgrid">${st.subjects.map(s => { const c = CAT[s.cat], pc = s.total ? s.done / s.total : 0;
+    const sc = s.status === "on track" ? "var(--ok)" : s.status === "tight" ? "var(--warn)" : s.status === "no exam date" ? "var(--mut)" : "var(--bad)";
+    return `<div class="sgt" style="--c:${c}" title="${s.done}/${s.total} sessions · ${s.rem} left · ${s.avail} slots before ${st.mocks ? "mocks" : "the exam"}">${ring(46, pc, c, 4, `<span class="sgp">${Math.round(pc * 100)}</span>`)}
+      <div class="col" style="gap:3px;min-width:0;flex:1"><span class="sgn">${esc(s.name)}</span><span class="sgs" style="color:${sc}"><i style="background:${sc}"></i>${esc(s.status)}</span>
+      <span class="sgx ell ${AR.test(s.next) ? "ar" : ""}">${esc(s.next)}</span></div></div>`; }).join("")}</div>`;
+}
+function studyWeek(st) {
+  const x = S.study, mn = (x && x.min) || {week: {}, today: {}}, wk = mn.week || {}, td = mn.today || {};
+  const cats = [...new Set(st.subjects.map(s => s.cat).concat(Object.keys(wk).filter(c => wk[c] > 0)))];
+  const sumW = cats.reduce((a, c) => a + (wk[c] || 0), 0), sumT = Object.values(td).reduce((a, b) => a + b, 0);
+  return `<div class="sec"><span>Focus this week</span><span>${fmtH(sumW)} · today ${fmtH(sumT)}${mn.caught ? ` · caught gaming ${mn.caught}×` : ""}</span></div>
+    <div class="sfw">${sumW ? `<div class="sfb">${cats.filter(c => wk[c]).map(c => `<b style="flex:${wk[c]};background:${CAT[c]}" title="${esc(CATNAME[c] || c)} ${fmtH(wk[c])}"></b>`).join("")}</div>
+    <div class="sfl">${cats.filter(c => wk[c]).map(c => `<span><i style="background:${CAT[c]}"></i>${esc((st.subjects.find(s => s.cat === c) || {}).name || CATNAME[c] || c)} ${fmtH(wk[c])}</span>`).join("")}</div>`
+    : `<div class="ds" style="padding:2px 2px 4px">Nothing yet this week. Hit Start focus and it counts here.</div>`}</div>`;
+}
+function paneStudy() {
+  const st = S.data.study;
+  if (!st) return `<div class="sempty">${hico("book", 34)}<b>No study plan yet</b>
+    <span>Tell your AI <i>“add my study plan”</i>: your subjects, what you study each day and when. It shows up here by itself.</span>
+    <span class="sbig go" data-a="big_set">${hico("cal", 14)}Set a countdown</span></div>`;
+  const x = S.study, C = S.cards;
+  let h = studyHero(st) + studyStrip(st);
+  if (C && C.n) h += flashCard("tab");
+  h += `<div class="sec"><span>Subjects</span><span>${st.mocks ? `${st.days_left} days of new material` : `${st.days_left} days left`}</span></div>` + studyGrid(st);
+  if (x && x.exams && x.exams.length) h += `<div class="sec"><span>Exams</span><span>${addLk("exam ", "exam physics 14 dec")}</span></div><div class="exr">${x.exams.map(e => `<span class="exc ${e.days <= 7 ? "hot" : ""}" data-a="study_exam" data-v="${esc(e.name.toLowerCase().replace(" ", ""))}" style="--c:${CAT[e.cat] || "#94a3b8"}" title="${esc(e.date)} · click to change"><b>${e.days}</b><span>${esc(e.name)}</span></span>`).join("")}</div>`;
+  h += studyWeek(st);
+  const more = S.stMore;
+  h += `<div class="smore" data-a="st_more">${more ? "Less" : "More · " + [x && x.papers && x.papers.length ? "past papers" : "", C ? "review cards" : "", st.checkpoint ? "checkpoint" : "", "next 7 days"].filter(Boolean).join(" · ")}<span style="transform:rotate(${more ? 180 : 0}deg)">⌄</span></div>`;
+  if (more) {
+    if (C) h += `<div class="sec"><span>Review cards</span><span>${C.n ? C.n + " due" : "all done today"} · box 1: ${C.boxes[1] || 0} · 2: ${C.boxes[2] || 0} · 3: ${C.boxes[3] || 0}${C.mistakes ? " · " + C.mistakes + " mistakes" : ""}</span></div>`
+         + (C.n ? "" : `<div class="ds" style="padding:2px 6px 6px">Nothing due. Log one you got wrong: <b>wrong physics question = answer</b></div>`);
+    if (x && x.papers && x.papers.length) h += papersSec();
+    if (st.checkpoint) h += `<div class="sec"><span>Next checkpoint</span><span>${esc(st.checkpoint.date)}</span></div><div class="wcard ar" style="font-size:13px">${esc(st.checkpoint.text)}</div>`;
+    h += `<div class="sec"><span>Next 7 days</span></div>`;
+    for (const w of st.week) h += `<div class="week"><span class="d" style="${w.today ? "color:#fff" : ""}">${w.label}</span>${w.items.map(i => `<span class="wk" style="background:${bg(CAT[i.cat], i.done ? 10 : 20)};color:${i.done ? "var(--dim)" : CAT[i.cat]}">${T(i.time || "", true)} ${esc(i.name)}</span>`).join("") || `<span class="ds">free</span>`}</div>`;
+  }
   return h;
 }
 const MC = {kcal:"#5eead4", p:"#ef4444", c:"#3b82f6", f:"#a855f7"};
@@ -3392,12 +3516,16 @@ function setRow(it, v) {
     return `<div class="setr"><div class="col" style="flex:1;gap:2px;min-width:0"><span class="t" style="font-size:13px">${esc(st[0])}</span><span class="ds">${esc(st[1])}</span></div>${st[2]}</div>`;
   }
   if (it.type === "bool") ctl = `<div class="sw ${v ? "on" : ""}" data-a="set" data-v="${esc(it.k)}" data-x="${v ? "false" : "true"}"><i></i></div>`;
-  else if (it.type === "choice") ctl = `<div class="seg">${it.opts.map(([o, l]) => `<span class="${v === o ? "on" : ""}" data-a="set" data-v="${esc(it.k)}" data-x="${esc(JSON.stringify(o))}">${esc(l)}</span>`).join("")}</div>`;
+  else if (it.type === "choice") {   // many / long options: label on top, options wrap underneath (never over the label)
+    const wide = it.opts.length > 6 || it.opts.reduce((n, x) => n + String(x[1]).length, 0) > 30;
+    ctl = `<div class="seg${wide ? " wrap" : ""}">${it.opts.map(([o, l]) => `<span class="${v === o ? "on" : ""}" data-a="set" data-v="${esc(it.k)}" data-x="${esc(JSON.stringify(o))}">${esc(l)}</span>`).join("")}</div>`;
+    if (wide) return `<div class="setr wide"><div class="col" style="gap:2px;min-width:0"><span class="t" style="font-size:13px">${esc(it.t)}</span>${it.d ? `<span class="ds">${esc(it.d)}</span>` : ""}</div>${ctl}</div>`;
+  }
   else if (it.type === "button") ctl = `<div class="btn" data-a="do" data-v="${esc(it.k)}">${esc(it.label || "Go")}</div>`;
   return `<div class="setr"><div class="col" style="flex:1;gap:2px;min-width:0"><span class="t" style="font-size:13px">${esc(it.t)}</span>${it.d ? `<span class="ds">${esc(it.d)}</span>` : ""}</div>${ctl}</div>`;
 }
 function setGroupHTML(g, V) {
-  const items = g.items, tileOk = it => it.type === "bool" && (!it.d || it.d.length <= 48);
+  const items = g.items.filter(it => !it.hidden), tileOk = it => it.type === "bool" && (!it.d || it.d.length <= 48);
   let h = "";
   const th = items.find(it => it.k === "theme");
   const art = S.media && S.media.art;
@@ -3411,10 +3539,16 @@ function setGroupHTML(g, V) {
   if (btns.length) h += `<div class="setb" style="margin-top:10px">${btns.map(it => `<div class="btn" data-a="do" data-v="${esc(it.k)}">${SET_TI[it.k] ? hico(SET_TI[it.k], 14) : ""}${esc(it.t)}</div>`).join("")}</div>`;
   return h;
 }
+const SET_BASICS = ["simple", "theme", "scale", "desk", "player", "lyrics", "sounds", "quiet", "prayer", "bedtime", "restart"];
 function paneSettings() {
   const st = S.settings;
   if (!st) return `<div class="wcard ds" style="padding:11px 13px">Loading settings…</div>`;
   const q = (S.setQ || "").trim().toLowerCase();
+  if (st.values.simple && !S.setAll && !q) {          // simple mode: a short list, everything else one tap away
+    const all = st.schema.flatMap(g => g.items), items = SET_BASICS.map(k => all.find(it => it.k === k)).filter(Boolean);
+    return `<div class="setq" data-keep="setq">${hico("search", 15)}<input id="setq" placeholder="Search settings" autocomplete="off" spellcheck="false"></div>`
+      + setGroupHTML({id: "basics", t: "Basics", items}, st.values) + `<div class="smore" data-a="set_all">All settings<span>⌄</span></div>`;
+  }
   if (!S.setG) { try { S.setG = localStorage.getItem("isl_setg") || ""; } catch (e) {} }
   const gid = st.schema.some(x => x.id === S.setG) ? S.setG : st.schema[0].id;
   let h = `<div class="setq" data-keep="setq">${hico("search", 15)}<input id="setq" placeholder="Search settings" autocomplete="off" spellcheck="false"></div>`;
@@ -3975,6 +4109,7 @@ const CMDS = [["water 500", "add water"], ["timer 25", "minutes · 90s · 1h30 �
   ["vol 40", "volume"], ["bright 60", "screen brightness"], ["= 12*7", "calculate"], ["stop", "clear timers"], ["player", "lyrics player (Win+Alt+P)"],
   ["lock", "lock the PC"], ["screens off", "turn the monitors off"],
   ["focus", "restart the 50/10 clock · focus physics · focus stop"],
+  ["big ", "the big countdown · big graduation 30 jun · big off"],
   ["swap maths physics", "swap two sessions today (or ⇅ on a row)"], ["open supernatural next ep", "the next episode, from your browser history"], ["move maths 7pm", "move one · move maths back · move reset"], ["mock physics", "timed mock at the real length"],
   ["exam physics 14 dec", "set an exam date"], ["score P25S 168", "save a past-paper score"], ["chat physics", "open that subject's chat"],
   ["wrong physics ", "save a mistake: question = answer (back after 1, 3, 7 days)"],
@@ -4166,7 +4301,7 @@ function renderDash() {
   const d = S.data, day = d.view, now = new Date();
   const hh = now.getHours(), clock = `${hh % 12 || 12}:${String(now.getMinutes()).padStart(2, "0")}`;
   dashSet("dhead", `<div class="dclock"><b>${clock}</b><span>${hh < 12 ? "am" : "pm"}</span></div>
-    <div class="col" style="gap:4px"><span class="dday">${now.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}</span><span class="mut" style="font-size:15px">${d.exam_days} days to Tawjihi · ${esc(d.exam_label || "")}</span></div><div class="sp"></div>
+    <div class="col" style="gap:4px"><span class="dday">${now.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}</span>${d.big ? `<span class="mut" style="font-size:15px">${d.big.days} days to ${esc(d.big.title)} · ${esc(d.big.label || "")}</span>` : ""}</div><div class="sp"></div>
     ${S.wx ? `<div class="dwx"><span style="font-size:44px">${S.wx.icon}</span><div class="col"><b>${Math.round(S.wx.t)}°</b><span class="mut">${esc(S.wx.desc)} · ↑${Math.round(S.wx.max)}° ↓${Math.round(S.wx.min)}°</span></div></div>` : ""}
     ${S.prayer && S.prayer.on && S.prayer.next ? `<div class="dwx"><span style="color:#5eead4">${hico("moon", 30)}</span><div class="col"><b>${esc(S.prayer.next.t)}</b><span class="mut">${esc(S.prayer.next.n)} · in ${fmt((S.prayer.next.at - Date.now()) / 60000)}</span></div></div>` : ""}
     ${ring(78, day.pct / 100, day.pct >= 100 ? "#4ade80" : "#a78bfa", 6, `<span style="font-size:17px">${day.pct}%</span>`)}
@@ -4794,6 +4929,11 @@ isl.addEventListener("click", e => {
   if (name === "im") { imenuDo(v, a); return; }
   if (name === "voice_toggle") { send("voice_toggle"); return; }
   if (name === "cmd_tile") { cmdTile(v, a.dataset.x); return; }
+  if (name === "scmd") { send("cmd", v); return; }
+  if (name === "set_all") { S.setAll = true; setSection("p-Settings", paneSettings()); return; }
+  if (name === "st_more") { S.stMore = !S.stMore; renderPanel(false); return; }
+  if (name === "study_tick") { const L = S.data && S.data.study && S.data.study.today; const it = L && L.find(i => i.key === v);
+    if (it) { it.done = !it.done; renderPanel(false); } send("study_tick", v); return; }
   if (name === "swap_pick") { S.swapA = S.swapA === v ? null : v; renderPanel(false); return; }
   if (name === "swap_to") { const a0 = S.swapA; S.swapA = null; if (a0 && a0 !== v) send("swap", [a0, v]); renderPanel(false); return; }
   if (name === "move_reset") { S.swapA = null; send("move_reset"); return; }
@@ -4900,7 +5040,7 @@ function tileLook(c) {
 function deckHead() {
   const d = S.data, now = new Date(), hh = now.getHours(), P = S.prayer && S.prayer.on && S.prayer.next ? S.prayer.next : null;
   return `<div class="dk-clock"><b>${hh % 12 || 12}:${String(now.getMinutes()).padStart(2, "0")}</b><span>${hh < 12 ? "am" : "pm"}</span></div>
-    <div class="dk-date"><b>${now.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}</b><span>${d.exam_days} days to Tawjihi</span></div><div class="sp"></div>
+    <div class="dk-date"><b>${now.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}</b>${d.big ? `<span>${d.big.days} days to ${esc(d.big.title)}</span>` : ""}</div><div class="sp"></div>
     ${S.game ? `<div class="dk-chip game">${hico("game", 18)}${esc(S.game.name)}<span class="mut">${fmt((Date.now() - S.game.since) / 60000)}${S.sysx && S.sysx.ping != null ? " · " + S.sysx.ping + " ms" : ""}</span></div>` : ""}
     ${P ? `<div class="dk-chip dk-pr"><span style="color:#5eead4;display:grid">${hico("moon", 17)}</span>${esc(P.n)}<span class="mut">${fmt((P.at - Date.now()) / 60000)}</span></div>` : ""}
     ${S.wx ? `<div class="dk-chip dk-wxc"><span style="font-size:19px">${S.wx.icon}</span>${Math.round(S.wx.t)}°</div>` : ""}

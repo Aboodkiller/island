@@ -34,7 +34,7 @@ SCHEMA = [
         dict(k="rim", t="Music glow rim", type="bool"),
         dict(k="weather", t="Weather", d="the forecast in the island and its widgets (off: nothing is fetched)", type="bool"),
         dict(k="desk", t="Desktop widgets", d="on the wallpaper, under your windows · hover them to edit", type="bool"),
-        dict(k="buddy", t="Island buddy", type="choice", opts=[["orb", "Orb"], ["bars", "Pulse bars"], ["ring", "Ring"], ["dots", "Dot grid"], ["drum", "Drummer cat"], ["hamster", "Typing hamster"], ["frog", "Frog on pads"], ["cat", "Cat"], ["bunny", "Bunny"], ["ghost", "Ghost"], ["slime", "Slime"], ["robot", "Robot"], ["eyes", "Eyes"], ["off", "Off"]]),
+        dict(k="buddy", t="Island buddy", type="choice", opts=[["orb", "Orb"], ["bars", "Pulse bars"], ["ring", "Ring"], ["dots", "Dot grid"], ["off", "Off"]]),
         dict(k="split", t="Timer bubble", type="bool"),
         dict(k="scale", t="Size", type="choice",
              opts=[[0.8, "80"], [0.9, "90"], [1.0, "100"], [1.1, "110"], [1.2, "120"], [1.3, "130"]]),
@@ -120,6 +120,8 @@ SCHEMA = [
         dict(k="deck_usb", t="Tablet over USB (Android)", d="USB debugging on + adb on the PC. Opens on the tablet by itself", type="bool"),
     ]),
     dict(id="island", t="Island", items=[
+        dict(k="simple", t="Simple mode", d="Only the basics: fewer tabs, settings and pop-ups. Off = everything", type="bool"),
+        dict(k="welcomed", t="Welcome card seen", type="bool", hidden=True),
         dict(k="compact", t="Compact island", type="bool", state=True),
         dict(k="follow", t="Follow the mouse to other screens", type="bool"),
         dict(k="autohide", t="Auto-hide the pill", d="Folds into a thin line; touch the top edge to bring it back", type="bool"),
@@ -134,7 +136,7 @@ SCHEMA = [
     ]),
 ]
 
-DEFAULTS = dict(shape="notch", rim=True, pet=True, buddy="orb", desk=True, weather=False, split=True, devbat=True, squig=True, voice=False, voice_key="rctrl", wake=True, voice_model="base", brain="off", lan=False, deck_usb=False, checkin=True, mirror_whatsapp=True, mirror_phone=True, mirror_discord=False, mirror_outlook=False, quiet="off", wx_alerts=True, screen=True, prayer=True, adhkar=True, brief=True, recap=True, bedtime="00:00", stretch=True, block=False, guard=True, next_nudge=True, autohide=False, player="pill", follow=True, watchdog=True, live_reload=True, update_toast=True, ram_trim=True, backups=True,
+DEFAULTS = dict(simple=True, welcomed=False, shape="notch", rim=True, pet=True, buddy="orb", desk=True, weather=False, split=True, devbat=True, squig=True, voice=False, voice_key="rctrl", wake=True, voice_model="base", brain="off", lan=False, deck_usb=False, checkin=False, mirror_whatsapp=True, mirror_phone=True, mirror_discord=False, mirror_outlook=False, quiet="off", wx_alerts=True, screen=True, prayer=True, adhkar=False, brief=True, recap=False, bedtime="00:00", stretch=False, block=False, guard=True, next_nudge=True, autohide=False, player="pill", follow=True, watchdog=True, live_reload=True, update_toast=True, ram_trim=True, backups=True,
                 theme="default", pillstyle="clean", font="geist", scale=1.0, motion="springy", icons=True, digits=True, glow=True,
                 accent=True, bump=True, breathe=False, heatmap=True, glass=False,
                 viz=True, lyrics="pill", artbg=True, sounds="soft", sound_vol=0.65, confetti=True,

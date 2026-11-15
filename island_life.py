@@ -156,6 +156,14 @@ class Life:
         if len(self.data[kind]) != n:
             self.save()
 
+    def set_big(self, title=None, date=None):
+        """The one big thing the island counts down to (exam, trip, launch...). None/None clears it."""
+        if not title and not date:
+            self.data.pop("big", None)
+        else:
+            self.data["big"] = {k: v for k, v in (("title", title), ("date", date)) if v}
+        self.save()
+
     def clear_done(self):
         self.data["todo"] = [x for x in self.data["todo"] if not x.get("done")]
         self.save()
@@ -199,7 +207,11 @@ class Life:
         cds.sort(key=lambda x: x["days"])
         hb = [dict(id=x["id"], name=x.get("name", ""), today=today.isoformat() in x.get("days", []),
                    streak=self.streak(x.get("days", []), today)) for x in self.data["habits"]]
-        return dict(deadlines=dl, countdowns=cds, todo=[dict(id=x["id"], text=x.get("text", ""), done=bool(x.get("done")))
+        big = self.data.get("big") or {}
+        for c in cds:
+            c["big"] = bool(big.get("date")) and big.get("title") == c["title"] and big.get("date") == next(
+                (x.get("date") for x in self.data["countdowns"] if x.get("id") == c["id"]), None)
+        return dict(big=big or None, deadlines=dl, countdowns=cds, todo=[dict(id=x["id"], text=x.get("text", ""), done=bool(x.get("done")))
                                                         for x in self.data["todo"]][-20:],
                     habits=hb, word=word_of_day(today))
 

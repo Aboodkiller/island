@@ -12,10 +12,14 @@ handed over clean: every plan file here is a **template**, so the job is to repl
 - Island reloads plan files within ~20 s, and `ui.html` live-reloads. If you change a `.py` file, the island shows
   an "updated" toast; the user clicks Restart (or it restarts itself after 10 idle minutes).
 - Don't install anything that needs a paid account. Don't turn on the site blocker (it needs admin) unless asked.
+- **The user may have ADHD: keep it simple.** Island starts in **Simple mode** (fewer tabs, short settings list, a
+  one-time "4 things" card, fewer pop-ups). Don't switch on extra features or notifications unless they ask. Add things
+  one at a time, show them where it appeared, and stop when they've had enough — they can come back later.
 
 ## 1. Install (Windows 10/11)
 1. Python 3.12+ from python.org, with **"Add python.exe to PATH"** ticked. Check: `python --version`.
-2. Put this folder somewhere permanent (e.g. `Documents\island`). Don't run it from Downloads or a zip.
+2. Put this folder somewhere permanent, **outside OneDrive**: `C:\island` is best (the island rewrites small files every
+   few seconds and OneDrive would sync them constantly). Don't run it from Downloads or a zip.
 3. Double-click `setup.bat`. It installs `requirements.txt`, adds Island to Startup and starts it.
 4. **"QtWebEngineProcess.exe - Qt6WebEngineCore.dll was not found"**: PySide6 got half-installed (usually pip upgrading
    it while an island was running) or the antivirus took the DLL. Close the island and run `setup.bat` again: it checks
@@ -33,8 +37,9 @@ Ask about these, in roughly this order, and write each answer into the matching 
 | Uni / school timetable, trips to uni, online classes | `plans/health.json` → `schedule` |
 | Meals (times, rough contents), daily water goal, vitamins | `plans/health.json` → `meals`, `water`, `vitamins`, `targets` |
 | Gym days, time, split and exercises | `plans/health.json` → `workouts` |
-| Subjects being studied, exam date, study times per weekday, the list of lessons | `plans/study.json` |
-| Individual exam dates per subject | `study.json` (`exams`) |
+| The ONE big thing they're counting down to (exam, trip, launch, graduation…) | command bar: `big <what> <date>` → `life.json` `big` |
+| Subjects being studied, study times per weekday, the list of lessons (only if they study) | `plans/study.json` |
+| Individual exam dates | command bar: `exam <name> <date>` → `study.json` `exams` |
 | Apps / sites they open all the time | `launch.json` |
 | Deadlines, to-dos, habits, countdowns | `life.json` |
 | City (weather + prayer times) | `CITY` in `island2.py` (line ~67) |
@@ -57,8 +62,11 @@ Each file has a `_help` field that explains it — read it.
 - `targets`: kcal / protein_g / fat_g / carbs_g (display only).
 - `log`: written by the island (ticks, water). Leave it alone.
 
-### plans/study.json (study plan)
-- `exam_day` (main countdown), `mock_start` (switches `rhythm` from `content` to `mock`).
+### plans/study.json (study plan) — starts EMPTY
+While `subjects` is empty the island has no study features at all (the Study tab shows "No study plan yet").
+`_example` in the file shows a small filled-in plan. Fill it only if the user studies.
+- `exam_name` + `exam_day`: the big countdown when the user hasn't picked one with `big`. `mock_start` (optional)
+  switches `rhythm` from `content` to `mock` on that date. No date at all = subjects show "no exam date" instead of pace.
 - `rhythm.content` / `rhythm.mock`: `{weekday: [subject keys]}` — which subjects run that day, in order.
 - `times`: `{weekday: ["16:00", "19:00"]}` — start time of each of that day's blocks (same order as rhythm).
 - `hours`: block length per subject (`"2h"`, `"1.5h"`, `"45m"`).
@@ -70,19 +78,23 @@ Each file has a `_help` field that explains it — read it.
   `island_core.py`, `CAT_NAME` in `island2.py` and `EXAM_MIN` in `island_study.py` together.
 - `checkpoints`: `{"2026-12-01": "note shown that day"}`.
 
+### The big countdown
+One number at the top of the panel: "N days to <thing>". It is `life.json` → `"big": {"title": "Graduation", "date": "2027-06-30"}`,
+or, if that has no date, the study plan's `exam_day` titled by `exam_name` (or by `big.title`). Nothing set = a
+"Count down to something" button. The user can change it any time: `big trip to Turkey 20 jul`, `big off`, or tap one of
+their countdown chips in the Today tab.
+
 ### Island's own files (created on first run; edit freely)
-- `study.json`: `{"exams": {"Physics": "2027-01-10"}, "chats": {"P": "https://claude.ai/chat/..."}, "papers": {}}` — `chats`
-  adds a button that opens that subject's chat.
+- `study.json`: `{"exams": {"Calculus": "2027-01-10"}, "chats": {"P": "https://claude.ai/chat/..."}, "papers": {}}` — `exams`
+  only lists what's set (command: `exam calculus 10 jan`); `chats` adds a button that opens that subject's chat.
 - `life.json`: `{"deadlines": [{"id","title","due","done"}], "countdowns": [{"id","title","date","tbc"}], "todo": [{"id","text","done"}], "habits": [{"id","name","days":[]}]}`.
   The user can also type these into the command bar (Win+Alt+Space): `deadline <what> <date>`, `todo <text>`, `habit <name>`, `countdown <what> <date>`.
 - `launch.json`: `[{"name": "Spotify", "path": "C:\\...\\Spotify.exe"}, {"name": "YouTube", "url": "https://youtube.com"}]` (max 10).
 - `cards.json`: flash cards `{"cards": [{"id","cat","front","back","kind":"formula","box":1,"due":"YYYY-MM-DD"}]}`.
-  It starts with Tawjihi physics/maths formula cards; replace them with the user's own or empty the list.
+  It starts empty. The user adds mistakes with `wrong physics question = answer` (they come back after 1, 3, 7 days).
 - `island_settings.json`: settings (the gear tab in the panel edits them; defaults live in `island_feats.py` `DEFAULTS`).
 
 ## 3. Things that are specific to the original owner — adapt or switch off
-- **"days to Tawjihi"** text (Jordan's school-leaving exam). If the user isn't doing Tawjihi, change that label in
-  `ui.html` and `island2.py` (search "Tawjihi") to their exam's name, or just "days to exams".
 - **QAWI / Body tab** (calories, rank, food logging) talks to a private app with the owner's server key. It is not
   included and won't work here; those tiles stay empty without data. Remove the `qawi` / `protein` / `rank`
   widgets if they show up.
@@ -118,6 +130,8 @@ If the user wants it lighter still (Settings, gear tab):
   Never commit or share that file.
 
 ## 5. Show the user how to use it
+The "4 things" card on the Today tab covers the basics; tap "Got it" and it's gone. Simple mode is in
+Settings › Island (off = every tab and setting).
 - Hover the pill = quick peek · click = Today panel · right-click = menu · scroll = volume · drag to a side edge = side island.
 - Hotkeys: Win+Alt+I panel · Win+Alt+Space command bar · Win+Alt+W +250 ml water · Win+Alt+P music player ·
   Win+Alt+T timer · Win+Alt+M mic mute · Win+Alt+H private mode · Win+Alt+D desktop widgets.
