@@ -9,6 +9,9 @@ handed over clean: every plan file here is a **template**, so the job is to repl
 - Talk casually and keep it short. Ask a few questions at a time, not a form.
 - **Back up a file before you edit it** (`copy plans\study.json plans\study.json.bak`). Don't delete the user's files.
 - Plan files are plain JSON. After editing, check that they still parse (`python -c "import json;json.load(open('plans/study.json',encoding='utf-8'))"`).
+- **Never edit the island's code for personal stuff** (island*.py, ui.html): it updates itself from GitHub and code
+  edits get replaced (the old file is kept in `backups/update-<version>/`). Everything personal goes in JSON files:
+  `plans/`, `island_config.json`, `life.json`, `launch.json`, `study.json`, `cards.json`, `island_settings.json`.
 - Island reloads plan files within ~20 s, and `ui.html` live-reloads. If you change a `.py` file, the island shows
   an "updated" toast; the user clicks Restart (or it restarts itself after 10 idle minutes).
 - Don't install anything that needs a paid account. Don't turn on the site blocker (it needs admin) unless asked.
@@ -28,6 +31,9 @@ handed over clean: every plan file here is a **template**, so the job is to repl
    Not showing at all? Run `python island2.py` in a terminal to see the error. Black box instead of a pill: `pythonw island2.py --gl`
    (or `--software`). Logs: `island.log`, `crash_last.log`, `watchdog.log`.
 5. Uninstall from startup: `python island2.py --remove-startup`.
+6. **Updates:** this is a shared copy (`SHARED_COPY` file). It checks GitHub every 6 hours and swaps in new code
+   (never plans, settings or data), then shows a Restart toast. Settings › Island › "Check for updates" does it now;
+   "Update by itself" turns the automatic check off. `python island_update.py` does the same from a terminal.
 
 ## 2. Interview the user, then fill the files
 Ask about these, in roughly this order, and write each answer into the matching file.
@@ -42,7 +48,7 @@ Ask about these, in roughly this order, and write each answer into the matching 
 | Individual exam dates | command bar: `exam <name> <date>` → `study.json` `exams` |
 | Apps / sites they open all the time | `launch.json` |
 | Deadlines, to-dos, habits, countdowns | `life.json` |
-| City (weather + prayer times) | `CITY` in `island2.py` (line ~67) |
+| City (weather + prayer times) | `island_config.json` → `"city": ["Amman", 31.95, 35.93]` (name, lat, lon), restart |
 
 Keys for weekdays everywhere: **0=Mon 1=Tue 2=Wed 3=Thu 4=Fri 5=Sat 6=Sun**. Times are 24-hour `"HH:MM"` in the
 files (the island shows 12-hour). Times earlier than `day_starts` (04:00) count as the previous day, so `"00:30"` = tonight.
@@ -98,8 +104,8 @@ their countdown chips in the Today tab.
 - **QAWI / Body tab** (calories, rank, food logging) talks to a private app with the owner's server key. It is not
   included and won't work here; those tiles stay empty without data. Remove the `qawi` / `protein` / `rank`
   widgets if they show up.
-- **Prayer times + adhan** use Jordan's Awqaf method (`method=23` in `island_day.py`) and `CITY`. Change both for another
-  country, or turn "Prayer times" off in settings. Drop an `prayer.mp3` into `sounds\` for a real adhan.
+- **Prayer times + adhan** use Jordan's Awqaf method and Amman. Another place: `island_config.json` →
+  `"city": [...]` and `"prayer_method": <aladhan.com method number>`, or turn "Prayer times" off in settings. Drop an `prayer.mp3` into `sounds\` for a real adhan.
 - **Word of the day** (German/Mandarin) lives in `island_life.py` — swap the word lists for the user's language or ignore.
 - **Game guard** during study blocks: `GAME_EXES` in `island_study.py` — add the user's games.
 - **Laptop temps widget** reads ASUS ACPI; on other brands it just stays empty.

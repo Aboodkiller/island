@@ -30,3 +30,4 @@ backups/
 _to_delete/
 models/
 plans/*.bak
+update.json

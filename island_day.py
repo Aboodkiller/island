@@ -38,14 +38,14 @@ def _write(p, obj):
 
 
 class Prayer:
-    def __init__(self, lat, lon):
-        self.lat, self.lon = lat, lon
+    def __init__(self, lat, lon, method=23):
+        self.lat, self.lon, self.method = lat, lon, int(method)   # 23 = Jordan (Awqaf); see aladhan.com for others
         self.cache = _load(CACHE)
         self.lock = threading.Lock()
         self.busy = set()
 
     def fetch_month(self, y, m):
-        url = (f"https://api.aladhan.com/v1/calendar/{y}/{m}?latitude={self.lat}&longitude={self.lon}&method=23")
+        url = (f"https://api.aladhan.com/v1/calendar/{y}/{m}?latitude={self.lat}&longitude={self.lon}&method={self.method}")
         req = urllib.request.Request(url, headers={"User-Agent": "island-widget"})
         with urllib.request.urlopen(req, timeout=15) as r:
             j = json.load(r)

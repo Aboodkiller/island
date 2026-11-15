@@ -3539,7 +3539,7 @@ function setGroupHTML(g, V) {
   if (btns.length) h += `<div class="setb" style="margin-top:10px">${btns.map(it => `<div class="btn" data-a="do" data-v="${esc(it.k)}">${SET_TI[it.k] ? hico(SET_TI[it.k], 14) : ""}${esc(it.t)}</div>`).join("")}</div>`;
   return h;
 }
-const SET_BASICS = ["simple", "theme", "scale", "desk", "player", "lyrics", "sounds", "quiet", "prayer", "bedtime", "restart"];
+const SET_BASICS = ["simple", "theme", "scale", "desk", "player", "lyrics", "sounds", "quiet", "prayer", "bedtime", "auto_update", "update_now", "restart"];
 function paneSettings() {
   const st = S.settings;
   if (!st) return `<div class="wcard ds" style="padding:11px 13px">Loading settings…</div>`;

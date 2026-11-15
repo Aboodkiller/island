@@ -55,6 +55,7 @@ import island_study
 import island_day
 import island_life
 import island_dev
+import island_update
 
 HERE = core.HERE
 STATE_FILE = os.path.join(HERE, "island_state.json")
@@ -65,6 +66,13 @@ WIN = sys.platform == "win32"
 WIN_W, WIN_H = 780, 820          # fixed transparent window; the island lives inside it
 EDGE = 0                         # the island's own CSS margin (8px) keeps it off the screen edge
 CITY = ("Amman", 31.95, 35.93)
+try:                               # island_config.json "city": ["Name", lat, lon] (your own file: updates never touch it)
+    _c = core.load_config().get("city")
+    if isinstance(_c, (list, tuple)) and len(_c) == 3:
+        CITY = (str(_c[0]), float(_c[1]), float(_c[2]))
+    PRAYER_METHOD = int(core.load_config().get("prayer_method", 23))
+except Exception:
+    PRAYER_METHOD = 23
 
 SUBJ = core.SUBJECT_EN
 CAT_NAME = {"P": "Physics", "MA": "Maths", "B": "Biology", "HI": "History", "R": "Review", "W": "Workout",
@@ -1654,7 +1662,7 @@ class Host(QWidget):
         except Exception as e:
             print("site blocker files:", e)
         self._block_until = -1
-        self.prayer = island_day.Prayer(CITY[1], CITY[2])
+        self.prayer = island_day.Prayer(CITY[1], CITY[2], PRAYER_METHOD)
         self.daylog = island_day.DayLog()
         self._prayer_js, self._away_from, self._last_act = None, None, time.time()
         self._streak_from = time.time()
@@ -1744,6 +1752,10 @@ class Host(QWidget):
         self.hb.timeout.connect(feats.heartbeat)
         self.hb.start(10_000)
         feats.heartbeat()
+        self.upd_timer = QTimer(self)     # copies from GitHub: look for new code every 6 h (first look 3 min after start)
+        self.upd_timer.timeout.connect(self.update_check)
+        self.upd_timer.start(6 * 3600_000)
+        QTimer.singleShot(180_000, self.update_check)
         try:                              # 16 GB and less: tighter memory limits, trim twice as often
             import psutil
             self.ram_gb = psutil.virtual_memory().total / 2**30
@@ -3584,7 +3596,9 @@ class Host(QWidget):
             QTimer.singleShot(70, self.binst_push)
             QTimer.singleShot(90, self.sayv_push)
         vals = dict(self.settings.values, compact=bool(self.state.get("compact")))
-        self.js("settings", dict(values=vals, schema=feats.SCHEMA))
+        sch = feats.SCHEMA if island_update.shared() else [   # update settings only exist in copies from GitHub
+            dict(g, items=[it for it in g["items"] if not it.get("shared")]) for g in feats.SCHEMA]
+        self.js("settings", dict(values=vals, schema=sch))
         self.js("customSounds", self.custom_sounds())
 
     def custom_sounds(self):
@@ -3650,7 +3664,36 @@ class Host(QWidget):
                 self.push_data()
         self.push_settings()
 
+    def update_check(self, manual=False):
+        """GitHub -> new code (shared copies only). Runs in a thread; the answer comes back through win_sig."""
+        if not island_update.shared() or getattr(self, "_upd_busy", False):
+            return
+        if not manual and not self.settings.get("auto_update", True):
+            return
+        if manual:
+            self.hud("dl", "Checking for updates…", ms=1500)
+        self._upd_busy = True
+
+        def run():
+            try:
+                r = island_update.check_and_update()
+            except Exception as e:
+                r = dict(status="error", msg=str(e), changed=[])
+            self.win_sig.emit(("update", dict(r, manual=manual)))
+        threading.Thread(target=run, daemon=True).start()
+
+    def update_done(self, r):
+        self._upd_busy = False
+        print(f"update: {r.get('status')} {r.get('msg', '')} {len(r.get('changed') or [])} file(s)")
+        if r.get("status") == "updated":
+            self.hud("ok", "Island updated", r=(r.get("msg") or "")[:40], ms=3200)
+        elif r.get("manual"):
+            self.hud("ok" if r.get("status") == "uptodate" else "info",
+                     "Up to date" if r.get("status") == "uptodate" else "Couldn't update", r=(r.get("msg") or "")[:40], ms=2400)
+
     def do_action(self, what):
+        if what == "update_now":
+            return self.update_check(manual=True)
         if what == "restart":
             self.restart()
         elif what == "test_sounds":
@@ -3774,6 +3817,8 @@ class Host(QWidget):
         st = self.settings.get
         if kind == "hotkey":
             self.on_hotkey(arg)
+        elif kind == "update":
+            self.update_done(arg)
         elif kind == "webicon":
             self.load_launch()
         elif kind == "lan":
