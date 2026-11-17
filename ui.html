@@ -455,6 +455,16 @@ body.away .vaura,body.away .vaura *{animation-play-state:paused!important}
 @keyframes vtw{0%,100%{opacity:.1}50%{opacity:1}}
 .vwrap.spin .vglow{opacity:calc(.34 + var(--lv,0) * .4)}
 .music .mtop,.music .mbot{position:relative;z-index:2}
+/* r41: the popped-out player: the island's own big player filling its window, a margin left for the shadow */
+body.popw{background:transparent!important}
+body.popw #isl{top:14px!important;left:14px!important;right:auto!important;transform:none!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04),0 0 18px -6px var(--glow)}
+body.popw .ear,body.popw #bub,body.popw #neck,body.popw #stk,body.popw #halo{display:none!important}
+body.popw .layer{transition:none}
+body.popw .music .mtop{cursor:grab}
+.pidle .mtop .art{background:rgba(255,255,255,.06)}
+.pidv{width:180px;height:180px;border-radius:50%;background:repeating-radial-gradient(circle,#0c0c0f 0 1.15px,#17171b 1.6px,#0c0c0f 2.3px);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);opacity:.55}
 .vtone{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.55))}
 .varm{transform:rotate(0deg);transition:transform 1s cubic-bezier(.3,.75,.25,1)}
 .vwrap.spin .varm{transform:rotate(20deg)}
@@ -2045,13 +2055,17 @@ const DESKW = location.hash === "#desk";
 const DECK = location.hash === "#deck" || (/^https?:$/.test(location.protocol) && (location.pathname === "/" || location.pathname === "/deck"));
 const DECK_HTTP = DECK && /^https?:$/.test(location.protocol);
 const DASH = location.hash === "#dash" || DECK || DESKW;
+const POPW = location.hash === "#player";          // r41: the music player popped out of the island into its own window
+const PWM = 14;                                    // its margin for the shadow
+const POP_SEND = new Set(["ready", "pw_drag", "pw_resize", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
+  "media_shuffle", "media_repeat", "media_like", "media_src"]);
 const DASH_SEND = new Set(["ready", "toggle", "ex", "water", "launch", "dash_close", "media_toggle", "media_next", "media_prev",
   "media_seek", "media_shuffle", "media_repeat", "media_like", "media_src"]);
 if (DECK) for (const k of ["vol", "mute", "mic_toggle", "cmd", "deck_tiles", "copy_today", "timer_cancel", "note_act", "clips_get", "clip_set",
                            "sp_search", "sp_play", "sp_queue", "deck_scenes", "sp_devices", "sp_transfer", "sp_lib", "sp_tracks", "sp_playctx", "sp_update"]) DASH_SEND.add(k);
 const DESK_SEND = new Set(["ready", "desk_size", "desk_hide", "desk_unpeek", "audio_dev", "desk_open", "desk_prefill", "cmd", "say", "water", "launch", "life_toggle",
   "media_toggle", "media_next", "media_prev"]);
-const send = (name, arg) => { if (DASH && !DASH_SEND.has(name) && !(DESKW && DESK_SEND.has(name))) return; try { if (DECK_HTTP) deckPost(name, arg); else if (py) py.action(JSON.stringify({name, arg})); else window.__mock && window.__mock(name, arg); } catch (e) { console.log(e); } };
+const send = (name, arg) => { if (POPW ? !POP_SEND.has(name) : DASH && !DASH_SEND.has(name) && !(DESKW && DESK_SEND.has(name))) return; try { if (DECK_HTTP) deckPost(name, arg); else if (py) py.action(JSON.stringify({name, arg})); else window.__mock && window.__mock(name, arg); } catch (e) { console.log(e); } };
 // connect to Python. Python also injects qwebchannel.js itself after load, then calls __connect()
 window.__connect = () => {
   if (py || !(window.qt && window.qt.webChannelTransport && window.QWebChannel)) return false;
@@ -2192,6 +2206,7 @@ function miniSize(side) {
 }
 function size(mode) {
   if (mode === "dash") return [window.innerWidth, window.innerHeight, 0];
+  if (POPW) return [Math.max(200, innerWidth - 2 * PWM), Math.max(200, innerHeight - 2 * PWM), 26];
   const side = S.dock !== "top";
   const vh = window.innerHeight;
   if (mode === "shelf") { const n = Math.max(1, Math.min(6, (S.shelf || []).length)); return [side ? 360 : 460, 62 + n * 50, 26]; }
@@ -2235,7 +2250,7 @@ function vinylFit() {                 // the record grows/shrinks with the playe
   v.style.zoom = Math.max(.4, Math.min(2.2, Math.min((b.clientWidth - 20) / 300, (b.clientHeight - 10) / 262))).toFixed(3);
 }
 document.addEventListener("pointerdown", e => {
-  const g = e.target.closest(".mrz"); if (!g || S.mode !== "music" || S.mview !== "full") return;
+  const g = e.target.closest(".mrz"); if (!g || POPW || S.mode !== "music" || S.mview !== "full") return;
   e.preventDefault(); e.stopPropagation();
   if (Date.now() - (S.rzTap || 0) < 380) {          // double-tap the grip = back to the default size
     S.rzTap = 0; delete mSizeGet()[S.dock !== "top" ? "side" : "top"];
@@ -2291,6 +2306,7 @@ function tuckArm() {                // the pill folds away 4 s after the mouse l
 function untuck() { if (!S.tucked) return; S.tucked = false; if (S.mode === "pill") { setMode("pill"); renderPill(); } }
 function setMode(mode) {
   if (DASH && mode !== "dash") return;      // the dashboard is always the board: nothing may turn it into the island
+  if (POPW) { mode = "music"; S.mview = "full"; S.stay = true; }
   if (mode === "panel" && S.mode !== "panel") S.panelFresh = true;      // r21: the content rises in when a view opens
   if (mode === "peek" && S.mode !== "peek") S.peekFresh = true;
   if (mode === "pill" && S.stay && S.media && S.mode !== "music" && !DECK) { mode = "music"; S.musicKey = null; setTimeout(renderMusic, 0); }
@@ -2321,7 +2337,7 @@ function setMode(mode) {
 const MO = {x: [0, 0, 0], v: [0, 0, 0], t: [0, 0, 0], k: 224, c: 24, on: false, last: 0};
 function shapeTo(w, h, r) {
   MO.t = [w, h, r];
-  const still = DECK || DASH || S.drag || S.rzing || !MO.x[0];
+  const still = DECK || DASH || POPW || S.drag || S.rzing || !MO.x[0];
   if (still) { MO.x = [w, h, r]; MO.v = [0, 0, 0]; shapeApply(); return; }
   // the island's own Motion setting decides (calm / normal / extra). Windows "Animation effects" is off on this PC,
   // which Chromium reports as reduced motion; honouring it made the island snap with no animation at all
@@ -4208,6 +4224,7 @@ isl.addEventListener("mousemove", e => {
 /* ====================================================================== full-screen player */
 function openMusic(view, hover) {
   if (!S.media) return;
+  if (S.popped && !POPW) { if (!hover) send("pw_front"); return; }      // it's out in its own window: bring that up
   clearTimeout(S.hoverT); clearTimeout(S.liveT); clearTimeout(S.musicOutT); S.musicKey = null;
   const def = S.settings && S.settings.values.player === "full" ? "full" : "pill";
   S.mview = view || (hover ? def : (S.lastMview || def));
@@ -4217,6 +4234,31 @@ function openMusic(view, hover) {
   send("mview", S.mview);
   setMode("music"); renderMusic();
 }
+function popOut() {                  // the window opens right where the player is, then the island lets go of it
+  if (S.popWait > Date.now()) return;
+  S.popWait = Date.now() + 4000;
+  const r = isl.getBoundingClientRect();
+  send("pop_player", [r.x, r.y, r.width, r.height]);
+}
+function popIdle() {
+  S.musicKey = "idle";
+  $("L-music").innerHTML = `<div class="music pidle"><div class="mtop"><div class="art" style="width:52px;height:52px"></div>
+    <div class="col" style="flex:1;gap:2px;min-width:0"><span class="t">Nothing playing</span><span class="mut" style="font-size:12.5px">Play something and it shows up here</span></div>
+    <span class="mx" data-a="pw_in" title="Back into the island"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14H4v6M4 20l7-7"/><rect x="11" y="3" width="10" height="8" rx="2"/></svg></span><span class="mx" data-a="pw_close" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
+    <div class="mbig"><div class="pidv"></div></div></div>`;
+}
+function popInit() {
+  document.body.className = "dock-top popw";
+  S.dock = "top"; S.mview = S.lastMview = "full"; S.stay = true;
+  setMode("music"); renderMusic();
+  addEventListener("resize", () => { setMode("music"); vinylFit(); });
+  document.addEventListener("pointerdown", e => {       // drag it by anything that isn't a button; the corner grip resizes it
+    if (e.button !== 0) return;
+    if (e.target.closest(".mrz")) { e.preventDefault(); e.stopImmediatePropagation(); send("pw_resize"); return; }
+    if (e.target.closest("[data-a],[data-seek],.ctl,.bar,input")) return;
+    send("pw_drag");
+  }, true);
+}
 function closeMusic() { S.stay = false; S.musicHover = false; clearTimeout(S.musicOutT); setMode("pill"); renderPill(); }
 function glowSync() {                // r40: the new song's colour reaches a player that didn't need rebuilding
   const el = $("L-music").firstElementChild, c = S.glowc || "#1ed760";
@@ -4224,6 +4266,7 @@ function glowSync() {                // r40: the new song's colour reaches a pla
 }
 function renderMusic() {
   const m = S.media;
+  if (!m && POPW) { popIdle(); return; }
   if (!m) { S.stay = false; setMode("pill"); renderPill(); return; }
   if (S.mview !== "full") return renderMPill();
   if (S.mstyle === undefined) { try { S.mstyle = localStorage.getItem("isl_mstyle") || "lyrics"; } catch (e) { S.mstyle = "lyrics"; } }
@@ -4238,9 +4281,9 @@ function renderMusic() {
   $("L-music").innerHTML = `<div class="music ${m.playing ? "playing" : ""}" style="--glowc:${S.glowc || "#1ed760"}">
     <div class="bgart${pbC(art)}" style="${pbS(art)}"></div><div class="mshade"></div>
     <i class="mrz ${S.dock === "right" ? "l" : ""}" data-a="mrz" title="Drag to resize · double-click = default size"></i>
-    <div class="mtop"><div class="art" data-a="music_small" title="Smaller player" style="width:52px;height:52px;cursor:pointer;${art}"></div>
+    <div class="mtop"><div class="art" ${POPW ? "" : `data-a="music_small" title="Smaller player"`} style="width:52px;height:52px;${POPW ? "" : "cursor:pointer;"}${art}"></div>
       <div class="col" style="flex:1;gap:2px;min-width:0"><span class="t mtt" title="${esc(m.title)}">${esc(m.title)}</span><span class="mut ell" style="font-size:12.5px">${esc(m.artist || "")}${appChip(m)}</span></div>
-      <span class="mxs">${xBtn("like", 18)}</span><div class="eq"><i></i><i></i><i></i><i></i></div><span class="mx ${V ? "on" : ""}" data-a="mstyle" title="${V ? "Show lyrics" : "Vinyl mode"}">${V ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" stroke-linecap="round" opacity=".6"/></svg>`}</span><span class="mx" data-a="music_small" title="Smaller player"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></span><span class="mx" data-a="music_close" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
+      <span class="mxs">${xBtn("like", 18)}</span><div class="eq"><i></i><i></i><i></i><i></i></div><span class="mx ${V ? "on" : ""}" data-a="mstyle" title="${V ? "Show lyrics" : "Vinyl mode"}">${V ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" stroke-linecap="round" opacity=".6"/></svg>`}</span>${POPW ? `<span class="mx" data-a="pw_in" title="Back into the island"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14H4v6M4 20l7-7"/><rect x="11" y="3" width="10" height="8" rx="2"/></svg></span>` : `<span class="mx" data-a="music_pop" title="Pop out: its own window, anywhere"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></span><span class="mx" data-a="music_small" title="Smaller player"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></span>`}<span class="mx" data-a="${POPW ? "pw_close" : "music_close"}" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
     ${V ? `<div class="mbig"><div class="vwrap ${m.playing ? "spin" : ""}"><div class="vglow"></div><div class="vaura"><i class="vsw"></i><i class="vwv"></i><i class="vwv"></i><i class="vwv"></i><i class="vemb">${VEMB}</i></div><div class="vbase"></div>
         <div class="vrec" style="animation-delay:-${(vang / 360 * 1.8).toFixed(3)}s"><div class="vlab" style="${art}"></div></div>
         <div class="vshine"></div><i class="vhole"></i><svg class="vtone" viewBox="0 0 300 262" width="300" height="262"><defs><linearGradient id="vtm" x1="0" x2="1"><stop offset="0" stop-color="#eef1f6"/><stop offset=".5" stop-color="#aab1bd"/><stop offset="1" stop-color="#6c7380"/></linearGradient><radialGradient id="vtb" cx=".4" cy=".35"><stop offset="0" stop-color="#4a4f5a"/><stop offset="1" stop-color="#16181d"/></radialGradient></defs><circle cx="282" cy="22" r="19" fill="url(#vtb)" stroke="rgba(255,255,255,.12)"/><g class="varm" style="transform-origin:282px 22px"><rect x="275" y="-6" width="14" height="16" rx="4" fill="#3a3e47" stroke="rgba(255,255,255,.15)"/><path d="M282 22 L282 150 Q282 186 266 206" fill="none" stroke="url(#vtm)" stroke-width="5" stroke-linecap="round"/><g transform="rotate(28 266 210)"><rect x="257" y="200" width="18" height="24" rx="3.5" fill="#2b2f37" stroke="url(#vtm)" stroke-width="1.6"/><rect x="261" y="214" width="10" height="8" rx="1.5" fill="#d9a441"/><path d="M264.5 222 L266 229 L267.5 222Z" fill="#f4f4f5"/></g><circle cx="282" cy="22" r="7" fill="url(#vtm)"/></g></svg></div></div>`
@@ -4631,6 +4674,7 @@ function renderDash() {
 
 /* ====================================================================== render + api */
 function renderAll() {
+  if (POPW) { renderMusic(); return; }
   if (DASH) { clearTimeout(S.dashT); S.dashT = setTimeout(renderDash, 60); return; }
   if (S.mode === "shelf") renderShelf();
   if (S.mode === "pill" || S.mode === "live") renderPill();
@@ -4862,6 +4906,11 @@ window.island = {
   },
   toast(t) { S.toast = t; renderToast(); setMode("toast"); bump(); },
   toastDone(ret) { S.toast = null; if ((ret || "pill") === "pill" && S.stay && S.media) { S.musicKey = null; setMode("music"); renderMusic(); return; } setMode(ret || "pill"); renderAll(); },
+  popped(v) {                        // r41: "out" = the window shows it now · "in" = back into the island · "closed"
+    S.popped = v === "out"; S.popWait = false;
+    if (v === "out") { S.stay = false; if (S.mode === "music") { setMode("pill"); renderPill(); } }
+    else if (v === "in" && S.media) openMusic("full");
+  },
   player(v) {
     if (S.mode === "music" && v && v !== S.mview) { S.mview = S.lastMview = v; S.musicKey = null; S.stay = true; send("mview", v); setMode("music"); renderMusic(); return; }
     if (S.mode === "music") closeMusic(); else openMusic(v || undefined); },
@@ -5019,7 +5068,7 @@ isl.addEventListener("mouseenter", () => {
     S.hoverT = setTimeout(() => {
       if (S.mode !== "pill" || S.drag) return;
       S.hovPop = false;
-      const song = mediaOn() && document.querySelector("#L-pill .mini-media:hover");
+      const song = mediaOn() && !S.popped && document.querySelector("#L-pill .mini-media:hover");
       S.hoverOpenAt = Date.now();
       if (song) { const src = flySrc(true); openMusic(undefined, true); flyCover(src, "#L-music .mpart, #L-music .mtop .art"); return; }   // the song -> its card
       const src = flySrc(); setMode("peek"); renderPeek(); flyCover(src);
@@ -5283,7 +5332,10 @@ isl.addEventListener("click", e => {
     S.mview = S.lastMview = name === "music_full" ? "full" : "pill";
     send("mview", S.mview); setMode("music"); renderMusic(); return; }
   if (name === "music_close") { closeMusic(); return; }
+  if (name === "music_pop") { popOut(); return; }
+  if (name === "pw_in" || name === "pw_close") { send(name); return; }
   if (name === "mrz") return;
+  if (name === "music_vinyl" && S.popped) { send("pw_front"); return; }
   if (name === "music_vinyl") { S.mstyle = "vinyl"; try { localStorage.setItem("isl_mstyle", "vinyl"); } catch (e) {} clearTimeout(S.musicOutT); S.musicKey = null; S.musicHover = false; S.stay = true;
     S.mview = S.lastMview = "full"; send("mview", "full"); setMode("music"); renderMusic(); return; }                    // the resize grip (handled by its pointer events)
   if (name === "mstyle") { S.mstyle = S.mstyle === "vinyl" ? "lyrics" : "vinyl"; try { localStorage.setItem("isl_mstyle", S.mstyle); } catch (e) {} S.musicKey = null; renderMusic(); return; }
@@ -5997,6 +6049,7 @@ if (DASH) {
     const f = window.island[k]; if (f) window.island[k] = function (...a) { const r = f.apply(this, a); renderAll(); return r; };
   }
 }
+else if (POPW) popInit();
 else { document.body.className = "dock-top"; setMode("pill"); }
 </script>
 </body>

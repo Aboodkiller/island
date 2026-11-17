@@ -1578,6 +1578,149 @@ class DeskWin(QWidget):
             self.page.runJavaScript(f"window.island && window.island.{fn}({a})")
 
 
+class PopBridge(QObject):
+    """The popped-out player's way back (POP_SEND in ui.html)."""
+    def __init__(self, host):
+        super().__init__()
+        self.host = host
+
+    @Slot(str)
+    def action(self, payload):
+        try:
+            j = json.loads(payload)
+            self.host.on_pop_action(j.get("name"), j.get("arg"))
+        except Exception as e:
+            print("player action error:", e)
+
+
+POP_FNS = {"media", "lyrics", "spos", "spstate", "lvl", "settings", "away"}
+
+
+class PopWin(QWidget):
+    """The music player popped out of the island (r41): ui.html#player in its own see-through window that stays on top,
+    drag it anywhere, resize it from the corner. Not in the taskbar. Back into the island with its button."""
+    M = 14                                    # the page leaves this margin for the shadow (PWM in ui.html)
+
+    def __init__(self, host, geo):
+        super().__init__(None)
+        self.host, self.ready, self.tries, self.fs_hidden = host, False, 0, False
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowTitle("Island player")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        self.view = QWebEngineView(self)
+        self.page = Page(self.view)
+        self.view.setPage(self.page)
+        self.page.setBackgroundColor(Qt.transparent)
+        self.view.setStyleSheet("background: transparent")
+        self.view.setAttribute(Qt.WA_TranslucentBackground)
+        st = self.page.settings()
+        st.setAttribute(QWebEngineSettings.ShowScrollBars, False)
+        st.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
+        self.view.setContextMenuPolicy(Qt.NoContextMenu)
+        lay.addWidget(self.view)
+        self.pbridge = PopBridge(host)
+        self.channel = QWebChannel(self.page)
+        self.channel.registerObject("bridge", self.pbridge)
+        self.page.setWebChannel(self.channel)
+        self.page.loadFinished.connect(self.on_loaded)
+        z = host.zoom
+        self.setMinimumSize(int((300 + 2 * self.M) * z), int((330 + 2 * self.M) * z))
+        self.setGeometry(*geo)
+        self.save_t = QTimer(self)
+        self.save_t.setSingleShot(True)
+        self.save_t.timeout.connect(host.pop_save)
+        self.drag_t = None
+        url = QUrl.fromLocalFile(os.path.join(HERE, "ui.html"))
+        url.setFragment("player")
+        self.view.load(url)                   # shown once the page says it's ready (no empty box first)
+
+    def on_loaded(self, ok):
+        self.view.setZoomFactor(self.host.zoom)
+        self.page.runJavaScript(bridge_js(), lambda r: None)
+        QTimer.singleShot(5000, self.check)
+
+    def check(self):
+        try:
+            if not self.ready and self.tries < 3:
+                self.tries += 1
+                self.on_loaded(True)
+        except RuntimeError:
+            pass
+
+    def moveEvent(self, e):
+        self.save_t.start(700)
+        super().moveEvent(e)
+
+    def resizeEvent(self, e):
+        self.save_t.start(700)
+        super().resizeEvent(e)
+
+    def front(self):
+        """Up above the other windows again, without taking the focus."""
+        if self.fs_hidden:
+            return
+        self.show()
+        self.raise_()
+        if WIN:
+            try:
+                user32.SetWindowPos(ctypes.c_void_p(int(self.winId())), ctypes.c_void_p(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010 | 0x0040)
+            except Exception as e:
+                print("player front:", e)
+
+    def _btn_down(self):
+        if WIN:
+            return bool(user32.GetAsyncKeyState(0x01) & 0x8000)
+        return bool(QGuiApplication.mouseButtons() & Qt.LeftButton)
+
+    def drag(self):
+        """Windows moves it (smooth, snaps to nothing); if that can't start, follow the mouse ourselves."""
+        w = self.windowHandle()
+        try:
+            if w is not None and w.startSystemMove():
+                return
+        except Exception as e:
+            print("player move:", e)
+        self._follow("move")
+
+    def resize_start(self):
+        w = self.windowHandle()
+        try:
+            if w is not None and w.startSystemResize(Qt.Edge.BottomEdge | Qt.Edge.RightEdge):
+                return
+        except Exception as e:
+            print("player resize:", e)
+        self._follow("size")
+
+    def _follow(self, how):
+        if not self._btn_down():
+            return
+        c0, g0 = QCursor.pos(), self.geometry()
+        if self.drag_t is None:
+            self.drag_t = QTimer(self)
+        try:
+            self.drag_t.timeout.disconnect()
+        except Exception:
+            pass
+
+        def step():
+            if not self._btn_down():
+                self.drag_t.stop()
+                return
+            d = QCursor.pos() - c0
+            if how == "move":
+                self.move(g0.topLeft() + d)
+            else:
+                self.resize(max(self.minimumWidth(), g0.width() + d.x()), max(self.minimumHeight(), g0.height() + d.y()))
+        self.drag_t.timeout.connect(step)
+        self.drag_t.start(8)
+
+    def js(self, fn, a):
+        if self.ready:
+            self.page.runJavaScript(f"window.island && window.island.{fn}({a})")
+
+
 # ============================================================== host window
 LAUNCH_MAX = 10
 
@@ -1972,7 +2115,8 @@ class Host(QWidget):
     def js(self, fn, arg=None):
         d = getattr(self, "dash", None)
         k = getattr(self, "desk", None)
-        if not self.ready and not (d and d.ready) and not (k and k.ready):
+        pw = getattr(self, "popw", None)
+        if not self.ready and not (d and d.ready) and not (k and k.ready) and not (pw and pw.ready):
             return
         a = "" if arg is None else json.dumps(arg, ensure_ascii=False, default=str)
         if self.ready and not getattr(self, "_frozen", False):
@@ -1985,6 +2129,8 @@ class Host(QWidget):
         k = getattr(self, "desk", None)
         if k is not None and k.ready and fn in DESK_FNS:
             k.js(fn, a)
+        if pw is not None and pw.ready and fn in POP_FNS:
+            pw.js(fn, a)
         L = self.lan
         if L is not None and L.clients and fn in DECK_FNS:
             L.broadcast(fn, a)
@@ -2076,6 +2222,9 @@ class Host(QWidget):
         k = getattr(self, "desk", None)
         if k is not None:
             own.add(int(k.winId()))
+        pw = getattr(self, "popw", None)
+        if pw is not None:
+            own.add(int(pw.winId()))
         return own
 
     # ---------------------------------------------------------- desktop widgets
@@ -2140,6 +2289,86 @@ class Host(QWidget):
         self._wall = dict(bg=",".join(map(str, bg)), hov=",".join(map(str, hov)), acc=",".join(map(str, acc)))
         print(f"wall: tiles tinted {self._wall['bg']} · accent {self._wall['acc']}")
         self.js("wall", self._wall)
+
+    # ---------------------------------------------------------- the popped-out player (r41)
+    def pop_open(self, rect=None, geo=None):
+        """rect = where the island's player is (page px): the window opens right there. geo = a saved window rect."""
+        pw = getattr(self, "popw", None)
+        if pw is not None:
+            pw.front()
+            return
+        z, M = self.zoom, PopWin.M
+        if rect:
+            x, y, w, h = (float(v) for v in rect[:4])
+            tl = self.mapToGlobal(QPoint(int(x * z), int(y * z)))
+            geo = (tl.x() - int(M * z), tl.y() - int(M * z), int((w + 2 * M) * z), int((h + 2 * M) * z))
+        if not geo:
+            g = QGuiApplication.primaryScreen().availableGeometry()
+            w, h = int((520 + 2 * M) * z), int((600 + 2 * M) * z)
+            geo = (g.right() - w - 40, g.top() + 60, w, h)
+        x, y, w, h = (int(v) for v in geo)
+        scr = QGuiApplication.screenAt(QPoint(x + w // 2, y + 30)) or QGuiApplication.primaryScreen()
+        g = scr.availableGeometry()                       # keep it on a screen (a monitor may be gone since)
+        w, h = min(w, g.width()), min(h, g.height())
+        x, y = max(g.left() - int(M * z), min(x, g.right() - w + int(M * z))), max(g.top() - int(M * z), min(y, g.bottom() - h + int(M * z)))
+        self.popw = PopWin(self, (x, y, w, h))
+        self.state["pop"] = dict(on=True, geo=[x, y, w, h])
+        self.save_state()
+        print(f"player: popped out at {x},{y} {w}x{h}")
+
+    def pop_save(self):
+        pw = getattr(self, "popw", None)
+        if pw is not None:
+            r = pw.geometry()
+            self.state["pop"] = dict(on=True, geo=[r.x(), r.y(), r.width(), r.height()])
+            self.save_state()
+
+    def pop_close(self, back_in=False):
+        pw = getattr(self, "popw", None)
+        if pw is None:
+            return
+        self.pop_save()
+        self.popw = None
+        self.state["pop"]["on"] = False
+        self.save_state()
+        pw.ready = False
+        pw.hide()
+        pw.close()
+        pw.deleteLater()
+        self.js("popped", "in" if back_in else "closed")
+        print("player: back in the island" if back_in else "player: closed")
+
+    def on_pop_action(self, name, arg):
+        pw = getattr(self, "popw", None)
+        if pw is None:
+            return
+        if name == "ready":
+            pw.ready = True
+            self.push_settings()
+            if self.media.last:
+                self._art_sent = None
+                self.push_media(self.media.last)
+            if self._lyr:
+                self.js("lyrics", self._lyr)
+            st = getattr(self, "sp_state", None)
+            if st:
+                self.js("spstate", {k2: v for k2, v in st.items() if k2 != "at"})
+            if getattr(self, "_away_js", None):
+                self.js("away", True)
+            if not pw.fs_hidden:
+                pw.show()
+                pw.front()
+            QTimer.singleShot(180, lambda: self.js("popped", "out"))    # now the island lets go of its player
+        elif name == "pw_drag":
+            pw.drag()
+        elif name == "pw_resize":
+            pw.resize_start()
+        elif name == "pw_in":
+            self.pop_close(True)
+        elif name == "pw_close":
+            self.pop_close(False)
+        elif name in ("media_toggle", "media_next", "media_prev", "media_seek", "media_shuffle", "media_repeat", "media_like", "media_src"):
+            self.on_action(name, arg)
 
     def desk_sync(self):
         want = WIN and self.settings.get("desk", True) and not self.hidden_fs
@@ -2261,6 +2490,11 @@ class Host(QWidget):
         """From the PC's media session; Spotify playing on his phone / another device (Spotify Connect) shows instead
         when nothing else really plays here."""
         self._win_media = m
+        pop = self.state.get("pop") or {}
+        if (pop.get("on") and pop.get("geo") and m and m.get("playing") and self.ready and getattr(self, "popw", None) is None
+                and not self.hidden_fs and not getattr(self, "_pop_restored", False)):
+            self._pop_restored = True            # once per run: popped out last time -> out again with the music
+            QTimer.singleShot(400, lambda g=tuple(pop["geo"]): self.pop_open(geo=g))
         self._push_media(self.media_merged(m))
 
     def media_merged(self, m):
@@ -2563,6 +2797,8 @@ class Host(QWidget):
                     self._memt.start(10 * 60_000)
                     QTimer.singleShot(90_000, self.mem_report)
             self.js("dock", self.dock)
+            if getattr(self, "popw", None) is not None and self.popw.ready:
+                self.js("popped", "out")
             self.push_settings()
             self.push_data()
             if self.media.last:
@@ -2660,6 +2896,16 @@ class Host(QWidget):
             self.update_meter()
         elif name == "press":
             self.press_at = QCursor.pos()
+        elif name == "pop_player":
+            self.pop_open(rect=arg)
+        elif name == "pw_front":
+            pw = getattr(self, "popw", None)
+            if pw is not None:
+                pw.front()
+            else:
+                self.js("popped", "closed")
+        elif name in ("pw_in", "pw_close"):
+            self.pop_close(name == "pw_in")
         elif name == "menu":
             self.menu()
         elif name == "toggle":
@@ -3059,6 +3305,12 @@ class Host(QWidget):
             fs = fullscreen_monitor(self.own_hwnds())
             mine = monitor_of(int(self.winId()))
             hide = fs is not None and fs == mine and not self.dragging
+            pw = getattr(self, "popw", None)
+            if pw is not None and pw.ready:
+                ph = fs is not None and fs == monitor_of(int(pw.winId()))
+                if ph != pw.fs_hidden:                 # a topmost window can knock a game out of exclusive fullscreen
+                    pw.fs_hidden = ph
+                    pw.hide() if ph else pw.front()
             if hide != self.hidden_fs:
                 # really hide the window (a topmost overlay can knock games out of exclusive fullscreen)
                 self.hidden_fs = hide
