@@ -1930,7 +1930,7 @@ body.notch.dock-top #isl{box-shadow:0 8px 22px rgba(0,0,0,.28),inset 0 -1px 0 rg
 .mpart,.dm-art,.dm-a{box-shadow:0 12px 34px rgba(0,0,0,.55),0 0 42px -8px color-mix(in srgb,var(--glowc,#1ed760) 55%,transparent)}
 </style>
 </head>
-<body class="dock-top">
+<body class="dock-top" style="transition:translate .5s cubic-bezier(.22,1,.36,1)">
 <div id="desk"></div><div class="ear" id="earL"></div><div class="ear" id="earR"></div><div id="neck"></div><div id="bub"></div><div id="stk"><i></i><i></i></div>
 <div id="isl" class="s-pill">
   <div id="isl-art"></div><div class="rim"></div>
@@ -2143,6 +2143,7 @@ function mApplySize() {               // live, while dragging: no mode change, n
   isl.style.setProperty("--w", w + "px"); isl.style.setProperty("--h", h + "px");
   shapeTo(w, h, r);
   const Ly = $("L-music"); if (Ly) { Ly.style.setProperty("--lw", w + "px"); Ly.style.setProperty("--lh", h + "px"); }
+  if (S.sxy) applyShift();
   vinylFit();
 }
 function vinylFit() {                 // the record grows/shrinks with the player
@@ -2178,6 +2179,17 @@ document.addEventListener("pointerup", e => {
   S.rz = null; S.rzing = false; isl.classList.remove("rzing");
   S.musicKey = null; renderMusic(); reportRect(); setTimeout(reportRect, 400);
 }, true);
+function applyShift() {               // r32: slide the island toward a screen corner, never out of its window
+  if (DECK || DASH || DESKW) return;
+  const [dx, dy] = S.sxy || [0, 0], [w, h] = size(S.mode);
+  let sx = 0, sy = 0;
+  if (S.dock === "top") { const m = Math.max(0, (innerWidth - w) / 2 - 6); sx = Math.max(-m, Math.min(m, dx)); }
+  else { const m = Math.max(0, (innerHeight - h) / 2 - 6); sy = Math.max(-m, Math.min(m, dy)); }
+  if (S.sxNow && S.sxNow[0] === sx && S.sxNow[1] === sy) return;
+  S.sxNow = [sx, sy];
+  document.body.style.translate = `${sx.toFixed(0)}px ${sy.toFixed(0)}px`;
+  clearTimeout(S.sxT); S.sxT = setTimeout(reportRect, 560);
+}
 function tuckOK() {
   return S.settings && S.settings.values.autohide && S.mode === "pill" && !S.drag && !(S.timers || []).length
     && !(lyrShown() && S.settings.values.lyrics === "pill") && S.net !== false;
@@ -2199,6 +2211,7 @@ function setMode(mode) {
   if (mode === "panel") S.day = 0;   // python resets to today whenever the panel (re)opens: stay in step
   const [w,h,r] = size(mode);
   isl.style.setProperty("--w", w + "px"); isl.style.setProperty("--h", h + "px"); isl.style.setProperty("--r", r + "px");
+  if (S.sxy) applyShift();
   const lean = mode === "pill" && S.hovPop && !S.tucked && !S.compact;    // hovering: the shape leans out a little
   shapeTo(w + (lean ? 14 : 0), h + (lean ? 4 : 0), r + (lean ? 2 : 0));
   if (!DECK && !DASH) { const Ly = $("L-" + mode); if (Ly) { Ly.style.setProperty("--lw", w + "px"); Ly.style.setProperty("--lh", h + "px"); } }
@@ -2267,9 +2280,10 @@ function reportRect() {
   // report the TARGET box (union with current) so click-through never cuts the island mid-animation
   const cx = r.left + r.width/2, cy = r.top + r.height/2;
   let x, y;
-  if (S.dock === "top") { x = cx - w/2; y = r.top; }
-  else if (S.dock === "left") { x = r.left; y = cy - h/2; }
-  else { x = r.right - w; y = cy - h/2; }
+  const [sx, sy] = S.sxNow || [0, 0];
+  if (S.dock === "top") { x = innerWidth / 2 + sx - w/2; y = r.top; }
+  else if (S.dock === "left") { x = r.left; y = innerHeight / 2 + sy - h/2; }
+  else { x = r.right - w; y = innerHeight / 2 + sy - h/2; }
   let L = Math.min(r.left, x), T = Math.min(r.top, y), R = Math.max(r.right, x + w), B = Math.max(r.bottom, y + h);
   if (S.bubOn && S.dock === "top") { R = Math.max(R, x + w + 9 + 46 + 2); B = Math.max(B, r.top + 46); }
   if (S.mode === "toast" && S.toast && S.toast.more && S.dock === "top") B = Math.max(B, y + h + 16);
@@ -4632,6 +4646,7 @@ window.island = {
   taps(x) { S.taps = x; if (S.mode === "peek" && dwTab() === "wid") renderPeek(); },
   devbat(l) { S.devbat = l || []; if (S.mode === "peek" && dwTab() === "wid") renderPeek(); },
   clipList(l) { S.clipL = l || []; if (S.mode === "peek" && dwTab() === "clip") renderPeek(); },
+  shift(v) { S.sxy = Array.isArray(v) ? v : [0, 0]; applyShift(); },
   dock(d) {
     S.dock = d; document.body.classList.remove("dock-top", "dock-left", "dock-right"); document.body.classList.add("dock-" + d);
     if (S.mode === "music" && S.media) { renderAll(); S.musicKey = null; setMode("music"); renderMusic(); return; }
