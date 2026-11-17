@@ -700,6 +700,31 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .bigset span{font-size:11px}
 .bigset:hover{background:rgba(255,255,255,.1)}
 .cdc{cursor:pointer}
+/* r36 one-screen tabs */
+.ohero{padding:14px 15px}
+.ohero .sht{white-space:nowrap}
+.owat{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:16px;background:var(--card);margin:0 0 10px}
+.owat>b{font:800 17px var(--mono,inherit);font-variant-numeric:tabular-nums;white-space:nowrap}
+.owat>b small{font-size:11.5px;font-weight:650;color:var(--mut)}
+.ochip{display:inline-grid;place-items:center;height:30px;padding:0 11px;border-radius:15px;background:rgba(34,211,238,.13);color:#67e8f9;font-size:12px;font-weight:750;cursor:pointer;transition:background .15s,transform .12s}
+.ochip:hover{background:rgba(34,211,238,.22)}
+.ochip:active{transform:scale(.93)}
+.olist{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.orow{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:12px;transition:background .15s}
+.orow:hover{background:rgba(255,255,255,.04)}
+.otm{width:52px;flex:none;font-size:12px;font-weight:700;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.odot{width:7px;height:7px;border-radius:50%;background:var(--c);flex:none}
+.ot{flex:1;min-width:0;font-size:13.5px;font-weight:650}
+.ot.ar{direction:rtl;text-align:right}
+.oin{font-size:11.5px;font-weight:700;color:var(--mut);white-space:nowrap}
+.olate{font-size:11px;font-weight:750;color:var(--warn)}
+.orow.done .ot,.orow.done .otm{color:var(--dim);text-decoration:line-through}
+.ock{width:22px;height:22px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c) 60%,transparent);display:grid;place-items:center;flex:none;cursor:pointer;color:#0b0c10;transition:background .15s,transform .12s}
+.ock:hover{background:color-mix(in srgb,var(--c) 18%,transparent)}
+.ock:active{transform:scale(.85)}
+.ock.on{background:var(--c);border-color:var(--c)}
+.ochips{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 4px}
+.ochip2{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:14px;background:var(--card);font-size:12px;font-weight:700;color:var(--c,var(--mut))}
 .qgrid{grid-template-columns:1fr 1fr!important;margin-top:10px}
 .qcyc .qv{font-size:11.5px;font-weight:750;color:var(--acc);white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
 .qcyc:not(.on) .qv{color:var(--dim)}
@@ -3288,7 +3313,50 @@ function welcomeCard() {          // simple mode, first days: the 4 things worth
     ${r("cursor", "Hover the island", "a quick look: music, next thing, widgets")}${r("cal", "Click it", "your whole day, tick things off")}
     ${r("grid", "Right-click it", "the menu: timer, water, settings…")}${r("kbd", "Win + Alt + Space", "type anything: <i>timer 25</i> · <i>water 500</i> · <i>big exam 20 jan</i>")}</div>`;
 }
+/* r36: every tab fits one screen unless you ask for more (Dev mode = the full views, like before) */
+const devOn = () => !!(S.settings && S.settings.values && S.settings.values.dev);
+const MORE_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
+function oneHero(it, kick, sub, btns) {
+  const c = CAT[it.cat] || "#a78bfa";
+  return `<div class="shero ohero" style="--c:${c}">${badge(it.cat, 46)}<div class="col" style="flex:1;gap:4px;min-width:0"><span class="shk">${kick}</span>
+    <span class="sht ell ${AR.test(it.title || "") ? "ar" : ""}">${esc(it.title)}</span>${sub ? `<span class="shd ell ${AR.test(sub) ? "ar" : ""}">${esc(sub)}</span>` : ""}
+    ${btns ? `<div class="sacts">${btns}</div>` : ""}</div></div>`;
+}
+function oneRow(t) {
+  const c = CAT[t.cat] || "#94a3b8", tick = !t.block && S.data.view.editable;
+  return `<div class="orow ${t.done ? "done" : ""}" style="--c:${c}"><span class="otm">${T(t.time || "", true)}</span><i class="odot"></i>
+    <span class="ot ell ${AR.test(t.title || "") ? "ar" : ""}">${esc(t.title)}</span>${t.state === "late" && !t.block && !t.done ? `<span class="olate">missed</span>` : t.until != null && t.until <= 90 && !t.done ? `<span class="oin">in ${fmt(t.until)}</span>` : ""}
+    ${tick ? `<span class="ock ${t.done ? "on" : ""}" data-a="toggle" data-v="${esc(t.key)}" title="${t.done ? "Undo" : "Done"}">${t.done ? hico("ok", 12) : ""}</span>` : ""}</div>`;
+}
+function todaySimple() {
+  const d = S.data, v = d.view, L = v.items.filter(t => t.time);
+  const live = L.filter(t => !t.done && !(t.block && t.state !== "now" && t.state !== "next"));
+  const hero = live.find(t => t.state === "now") || live.find(t => t.state === "next") || live.find(t => t.state === "late" && !t.block);
+  let h = welcomeCard();
+  if (hero) {
+    const kick = hero.state === "now" ? `Now · ${fmt(hero.left)} left` : hero.state === "late" ? `Missed · was ${T(hero.time)}` : `Next · ${T(hero.time)}${hero.until != null ? " · in " + fmt(hero.until) : ""}`;
+    const btns = hero.block ? "" : `<span class="sbig ok" data-a="toggle" data-v="${esc(hero.key)}">${hico("ok", 15)}Done</span>`;
+    h += oneHero(hero, kick, hero.desc || "", btns);
+  } else h += `<div class="shero" style="--c:#4ade80"><span class="shic">${hico("ok", 26)}</span><div class="col" style="gap:4px"><span class="shk">Today</span><span class="sht">${L.length ? "All done. Go rest." : "Nothing planned today."}</span></div></div>`;
+  if (d.water.goal) {
+    const w = d.water, L2 = x => (x / 1000).toFixed(1).replace(/\.0$/, "");
+    h += `<div class="owat">${I.drop("#22d3ee", 16)}<b>${L2(w.ml)}<small>/${L2(w.goal)} L</small></b><div class="bar" style="flex:1;height:7px;border-radius:4px"><b style="width:${Math.min(100, w.ml / w.goal * 100)}%;background:linear-gradient(90deg,#0ea5e9,#22d3ee)"></b></div>
+      ${w.chips.filter(c => c > 0).slice(0, 2).map(c => `<span class="ochip" data-a="water" data-v="${c}">+${c >= 1000 && c % 1000 === 0 ? c / 1000 + "L" : c}</span>`).join("")}</div>`;
+  }
+  const next = live.filter(t => t !== hero).slice(0, 4), done = L.filter(t => t.done && !t.block).length, missed = L.filter(t => t.state === "late" && !t.block && !t.done && t !== hero).length;
+  if (next.length) h += `<div class="sec"><span>Up next</span><span>${done ? `${done} done` : ""}${missed ? `${done ? " · " : ""}${missed} missed` : ""}</span></div><div class="olist">${next.map(oneRow).join("")}</div>`;
+  const P = S.prayer, dl = ((S.life && S.life.deadlines) || []).filter(x => !x.done && x.days != null && x.days <= 7).slice(0, 2);
+  const chips = [P && P.on && P.next ? `<span class="ochip2">${hico("moon", 13)}${esc(P.next.n)} ${esc(P.next.t || "")}</span>` : ""]
+    .concat(dl.map(x => `<span class="ochip2" style="--c:${x.days <= 1 ? "var(--bad)" : "var(--warn)"}">${hico("cal", 13)}${esc(shortDL(x.title))} · ${x.days === 0 ? "today" : x.days === 1 ? "tomorrow" : x.days + "d"}</span>`)).filter(Boolean);
+  if (chips.length) h += `<div class="ochips">${chips.join("")}</div>`;
+  h += `<div class="smore" data-a="td_all">Whole day<span>${MORE_I}</span></div>`;
+  return h;
+}
 function paneToday() {
+  if (!devOn() && !S.tdAll && S.data.view.offset === 0) return todaySimple();
+  return (!devOn() && S.tdAll ? `<div class="smore" data-a="td_all" style="margin:0 0 8px">Back to now<span style="transform:rotate(180deg)">${MORE_I}</span></div>` : "") + paneTodayFull();
+}
+function paneTodayFull() {
   const d = S.data, v = d.view, ed = v.editable;
   let h = (v.offset === 0 ? welcomeCard() : "") + (v.offset === 0 ? prayStrip() + lifeTop() : "");
   if (d.water.goal && v.offset === 0) {
@@ -3421,9 +3489,11 @@ function paneStudy() {
     <span class="sbig go" data-a="big_set">${hico("cal", 14)}Set a countdown</span></div>`;
   const x = S.study, C = S.cards;
   let h = studyHero(st) + studyStrip(st);
-  if (C && C.n) h += flashCard("tab");
+  const simple = !devOn() && !S.stMore;
+  if (C && C.n && !simple) h += flashCard("tab");
   h += `<div class="sec"><span>Subjects</span><span>${st.mocks ? `${st.days_left} days of new material` : `${st.days_left} days left`}</span></div>` + studyGrid(st);
   if (x && x.exams && x.exams.length) h += `<div class="sec"><span>Exams</span><span>${addLk("exam ", "exam physics 14 dec")}</span></div><div class="exr">${x.exams.map(e => `<span class="exc ${e.days <= 7 ? "hot" : ""}" data-a="study_exam" data-v="${esc(e.name.toLowerCase().replace(" ", ""))}" style="--c:${CAT[e.cat] || "#94a3b8"}" title="${esc(e.date)} · click to change"><b>${e.days}</b><span>${esc(e.name)}</span></span>`).join("")}</div>`;
+  if (simple) return h + `<div class="smore" data-a="st_more">More${C && C.n ? ` · ${C.n} card${C.n > 1 ? "s" : ""} to review` : ""}<span>${MORE_I}</span></div>`;
   h += studyWeek(st);
   const more = S.stMore;
   h += `<div class="smore" data-a="st_more">${more ? "Less" : "More · " + [x && x.papers && x.papers.length ? "past papers" : "", C ? "review cards" : "", st.checkpoint ? "checkpoint" : "", "next 7 days"].filter(Boolean).join(" · ")}<span style="transform:rotate(${more ? 180 : 0}deg)">⌄</span></div>`;
@@ -3483,7 +3553,32 @@ function macroTipHTML() {
   if (!t.opts || !t.opts.length) return `<div class="mtip">${t.p} g protein left · ${Math.max(0, t.k).toLocaleString()} kcal left</div>`;
   return `<div class="mtip"><b>${t.p} g protein left</b>${t.k > 0 ? ` · ${t.k.toLocaleString()} kcal` : ""} → ${t.opts.map(o => `~${o.g} g ${esc(o.name)} <span class="mut">(${o.kcal} kcal)</span>`).join(" or ")}</div>`;
 }
+function bodySimple() {
+  const b = S.data.body, f = S.fit, v = S.data.view;
+  let h = "";
+  if (b && b.wo_name) {
+    const n = (b.exercises || []).length, on = (b.exercises || []).filter(e => e.on).length;
+    h += `<div class="shero" style="--c:#ff7a4d">${b.wo_done ? `<span class="shic">${hico("ok", 26)}</span>` : `<span class="shic">${I.dumb ? I.dumb() : hico("bolt", 24)}</span>`}
+      <div class="col" style="flex:1;gap:4px;min-width:0"><span class="shk">${esc(b.wo_label)} · ${apS(esc(b.wo_time))}</span><span class="sht">${esc(b.wo_name)}</span>
+      <span class="shd">${b.wo_done ? "Done. Good work." : `${n} exercises${on ? ` · ${on} done` : ""}`}</span>
+      <div class="sacts">${b.wo_toggle ? `<span class="sbig ${b.wo_done ? "" : "ok"}" data-a="toggle" data-v="H:WO">${hico("ok", 15)}${b.wo_done ? "Undo" : "Done"}</span>` : ""}${n ? `<span class="sbig" data-a="bo_ex">${S.boEx ? "Hide" : "Exercises"}</span>` : ""}</div></div></div>`;
+    if (S.boEx) h += `<div class="olist" style="margin-bottom:10px">${b.exercises.map((e, i) => `<div class="orow ${e.on ? "done" : ""}" style="--c:#ff7a4d"><span class="otm">${i + 1}</span><i class="odot"></i><span class="ot ell">${esc(e.name)}</span><span class="oin">${esc(e.meta)}</span>${b.ex_editable ? `<span class="ock ${e.on ? "on" : ""}" data-a="ex" data-v="${esc(e.id)}">${e.on ? hico("ok", 12) : ""}</span>` : ""}</div>`).join("")}</div>`;
+  }
+  if (f && f.ok) {
+    const t = f.t, left = t.kcal - f.kcal, pp = t.p ? Math.min(100, f.p / t.p * 100) : 0;
+    h += `<div class="owat" style="gap:12px"><b style="color:${left < 0 ? "var(--bad)" : "var(--fg)"}">${Math.abs(left).toLocaleString()}<small>${left >= 0 ? " kcal left" : " kcal over"}</small></b>
+      <div class="col" style="flex:1;gap:4px"><span class="ds">protein ${Math.round(f.p)} / ${Math.round(t.p)} g</span><div class="bar" style="height:6px;border-radius:3px"><b style="width:${pp}%;background:${MC.p}"></b></div></div></div>`;
+  }
+  const food = v.items.filter(t => (t.cat === "ME" || t.cat === "V") && !t.block);
+  if (food.length) h += `<div class="sec"><span>Meals &amp; vitamins</span><span>${food.filter(t => t.done).length}/${food.length}</span></div><div class="olist">${food.slice(0, 6).map(oneRow).join("")}</div>`;
+  if (!h) h = `<div class="sempty">${hico("bolt", 30)}<b>No body plan yet</b><span>Tell your AI <i>“add my gym and meals”</i>. It shows up here.</span></div>`;
+  return h + `<div class="smore" data-a="bo_all">Everything<span>${MORE_I}</span></div>`;
+}
 function paneBody() {
+  if (!devOn() && !S.boAll) return bodySimple();
+  return (!devOn() && S.boAll ? `<div class="smore" data-a="bo_all" style="margin:0 0 8px">Back<span style="transform:rotate(180deg)">${MORE_I}</span></div>` : "") + paneBodyFull();
+}
+function paneBodyFull() {
   const b = S.data.body; let h = fitSection() + macroTipHTML() + `<div class="row" style="gap:6px;margin:2px 0 6px"><span class="sbtn" data-a="cmd_prefill" data-v="weight " title="Send today's weight to QAWIFit">⚖ log weight</span></div>`;
   if (!b) return h + `<div class="mut" style="padding:20px">Health plan not found.</div>`;
   if (b.targets && !(S.fit && S.fit.ok)) h += `<div class="sec"><span>Daily targets</span></div><div class="macro">${b.targets.map(([k,v])=>`<div><b>${v}</b><span class="ds">${k}</span></div>`).join("")}</div>`;
@@ -5090,6 +5185,9 @@ isl.addEventListener("click", e => {
   if (name === "cmd_tile") { cmdTile(v, a.dataset.x); return; }
   if (name === "scmd") { send("cmd", v); return; }
   if (name === "set_all") { S.setAll = true; setSection("p-Settings", paneSettings()); return; }
+  if (name === "td_all") { S.tdAll = !S.tdAll; renderPanel(false); $("pb") && ($("pb").scrollTop = 0); return; }
+  if (name === "bo_all") { S.boAll = !S.boAll; renderPanel(false); $("pb") && ($("pb").scrollTop = 0); return; }
+  if (name === "bo_ex") { S.boEx = !S.boEx; renderPanel(false); return; }
   if (name === "st_more") { S.stMore = !S.stMore; renderPanel(false); return; }
   if (name === "study_tick") { const L = S.data && S.data.study && S.data.study.today; const it = L && L.find(i => i.key === v);
     if (it) { it.done = !it.done; renderPanel(false); } send("study_tick", v); return; }
