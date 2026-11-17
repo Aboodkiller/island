@@ -408,8 +408,9 @@ body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;anima
 .music:hover .mrz,#isl.rzing .mrz{opacity:.9}
 #isl.rzing *{transition:none!important}
 /* vinyl mode (r30): the cover is the record's label, the record spins at 33 rpm while playing, the tonearm drops on */
-.vwrap{position:relative;width:300px;height:262px;zoom:1.22;flex:none}
-.vglow{position:absolute;left:22px;top:17px;width:226px;height:226px;border-radius:50%;background:var(--glowc,#1ed760);opacity:.22;filter:blur(38px);transition:opacity .8s}
+@property --auc{syntax:"<color>";inherits:true;initial-value:#1ed760}
+.vwrap{position:relative;width:300px;height:262px;zoom:1.22;flex:none;--auc:var(--glowc,#1ed760);transition:--auc 1.6s ease}
+.vglow{position:absolute;left:22px;top:17px;width:226px;height:226px;border-radius:50%;background:var(--auc,#1ed760);opacity:.22;filter:blur(38px);transition:opacity .8s}
 .vwrap.spin .vglow{opacity:.38}
 .vrec{position:absolute;left:10px;top:5px;width:250px;height:250px;border-radius:50%;
   background:radial-gradient(circle,transparent 0 21%,rgba(0,0,0,.55) 21.5% 23%,transparent 23.5% 96%,rgba(255,255,255,.07) 97%,#050506 98.5%),
@@ -439,17 +440,17 @@ body:not(.viz) .vwrap.spin .vaura{animation:vbr 2.6s ease-in-out infinite}
 .vwrap.spin .vaura *{animation-play-state:running!important}
 body.away .vaura,body.away .vaura *{animation-play-state:paused!important}
 .vsw{left:-158px;top:-158px;width:316px;height:316px;
-  background:conic-gradient(from 0deg,var(--glowc,#1ed760) 0 6%,transparent 17% 29%,color-mix(in srgb,var(--glowc,#1ed760) 40%,#fff) 38%,transparent 50% 61%,var(--glowc,#1ed760) 72%,transparent 85%,var(--glowc,#1ed760));
+  background:conic-gradient(from 0deg,var(--auc,#1ed760) 0 6%,transparent 17% 29%,color-mix(in srgb,var(--auc,#1ed760) 40%,#fff) 38%,transparent 50% 61%,var(--auc,#1ed760) 72%,transparent 85%,var(--auc,#1ed760));
   -webkit-mask:radial-gradient(circle closest-side,transparent 0 74%,rgba(0,0,0,.9) 80%,rgba(0,0,0,.55) 88%,transparent 100%);
   animation:vspin 6.5s linear infinite reverse}
-.vwv{left:-125px;top:-125px;width:250px;height:250px;opacity:0;border:1.5px solid color-mix(in srgb,var(--glowc,#1ed760) 60%,#fff);
-  box-shadow:0 0 16px color-mix(in srgb,var(--glowc,#1ed760) 80%,transparent),inset 0 0 10px color-mix(in srgb,var(--glowc,#1ed760) 60%,transparent);
+.vwv{left:-125px;top:-125px;width:250px;height:250px;opacity:0;border:1.5px solid color-mix(in srgb,var(--auc,#1ed760) 60%,#fff);
+  box-shadow:0 0 16px color-mix(in srgb,var(--auc,#1ed760) 80%,transparent),inset 0 0 10px color-mix(in srgb,var(--auc,#1ed760) 60%,transparent);
   animation:vwave 2.7s cubic-bezier(.15,.55,.35,1) infinite}
 .vwv:nth-child(3){animation-delay:.9s}.vwv:nth-child(4){animation-delay:1.8s}
 @keyframes vwave{0%{transform:scale(.99);opacity:.6}100%{transform:scale(1.26);opacity:0}}
 .vemb{left:0;top:0;width:0;height:0;animation:vspin 13s linear infinite}
 .vemb b{position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#fff;
-  box-shadow:0 0 5px 2px color-mix(in srgb,var(--glowc,#1ed760) 85%,transparent);
+  box-shadow:0 0 5px 2px color-mix(in srgb,var(--auc,#1ed760) 85%,transparent);
   transform:rotate(var(--a)) translateY(calc(-1 * var(--r)));animation:vtw 1.7s ease-in-out infinite;animation-delay:var(--d)}
 @keyframes vtw{0%,100%{opacity:.1}50%{opacity:1}}
 .vwrap.spin .vglow{opacity:calc(.34 + var(--lv,0) * .4)}
@@ -4217,13 +4218,17 @@ function openMusic(view, hover) {
   setMode("music"); renderMusic();
 }
 function closeMusic() { S.stay = false; S.musicHover = false; clearTimeout(S.musicOutT); setMode("pill"); renderPill(); }
+function glowSync() {                // r40: the new song's colour reaches a player that didn't need rebuilding
+  const el = $("L-music").firstElementChild, c = S.glowc || "#1ed760";
+  if (el && el.style.getPropertyValue("--glowc") !== c) el.style.setProperty("--glowc", c);
+}
 function renderMusic() {
   const m = S.media;
   if (!m) { S.stay = false; setMode("pill"); renderPill(); return; }
   if (S.mview !== "full") return renderMPill();
   if (S.mstyle === undefined) { try { S.mstyle = localStorage.getItem("isl_mstyle") || "lyrics"; } catch (e) { S.mstyle = "lyrics"; } }
   const V = S.mstyle === "vinyl", L = !V && lyrShown(), key = [m.title, m.playing, V ? "v" : L ? S.lyr.key : "", m.art ? m.art.length : 0].join("|");
-  if (S.musicKey === key && $("L-music").firstElementChild) { syncMusic(true); syncX(); return; }
+  if (S.musicKey === key && $("L-music").firstElementChild) { glowSync(); syncMusic(true); syncX(); return; }
   S.musicKey = key; S.musicIdx = null;
   let vang = 0;                                   // keep the record's angle when play/pause rebuilds the view
   const ov = document.querySelector("#L-music .vrec");
@@ -4250,7 +4255,7 @@ function renderMusic() {
 function renderMPill() {
   const m = S.media, L = lyrShown(), side = S.dock !== "top";
   const key = ["p", m.title, m.artist, m.playing, L ? S.lyr.key : "", m.art ? m.art.length : 0, side].join("|");
-  if (S.musicKey === key && $("L-music").firstElementChild) { syncX(); return; }
+  if (S.musicKey === key && $("L-music").firstElementChild) { glowSync(); syncX(); return; }
   S.musicKey = key;
   const art = m.art ? "background-image:var(--art)" : "", dur = m.dur || 0, c = S.glowc || "#1ed760";
   $("L-music").innerHTML = `<div class="mpill ${m.playing ? "playing" : ""}" style="--glowc:${c}">
