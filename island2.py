@@ -1601,9 +1601,12 @@ class PopWin(QWidget):
     drag it anywhere, resize it from the corner. Not in the taskbar. Back into the island with its button."""
     M = 14                                    # the page leaves this margin for the shadow (PWM in ui.html)
 
-    def __init__(self, host, geo):
+    GAP = 8                                   # from the screen edge, like the island
+
+    def __init__(self, host, geo, dock="top", anchor=None):
         super().__init__(None)
         self.host, self.ready, self.tries, self.fs_hidden = host, False, 0, False
+        self.dock, self.anchor, self.anim, self.watch_t = dock, anchor, None, None
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowTitle("Island player")
@@ -1675,23 +1678,100 @@ class PopWin(QWidget):
         return bool(QGuiApplication.mouseButtons() & Qt.LeftButton)
 
     def drag(self):
-        """Windows moves it (smooth, snaps to nothing); if that can't start, follow the mouse ourselves."""
+        """Windows moves it (smooth); if that can't start, follow the mouse ourselves. Let go: it sticks to an edge."""
+        self._stop_anim()
         w = self.windowHandle()
         try:
             if w is not None and w.startSystemMove():
+                self._watch(False)
                 return
         except Exception as e:
             print("player move:", e)
         self._follow("move")
 
     def resize_start(self):
+        """From the corner away from its edge (stuck on the right = the bottom-left corner)."""
+        self._stop_anim()
         w = self.windowHandle()
+        edges = Qt.Edge.BottomEdge | (Qt.Edge.LeftEdge if self.dock == "right" else Qt.Edge.RightEdge)
         try:
-            if w is not None and w.startSystemResize(Qt.Edge.BottomEdge | Qt.Edge.RightEdge):
+            if w is not None and w.startSystemResize(edges):
+                self._watch(True)
                 return
         except Exception as e:
             print("player resize:", e)
         self._follow("size")
+
+    def _stop_anim(self):
+        if self.anim is not None:
+            self.anim.stop()
+            self.anim = None
+
+    def _watch(self, keep):
+        """Windows runs the move/resize itself: poll for the button coming up, then snap."""
+        if self.watch_t is None:
+            self.watch_t = QTimer(self)
+        try:
+            self.watch_t.timeout.disconnect()
+        except Exception:
+            pass
+        t0 = time.time()
+
+        def tick():
+            if self._btn_down() and time.time() - t0 < 30:
+                return
+            self.watch_t.stop()
+            self.snap(QCursor.pos(), keep=keep)
+        self.watch_t.timeout.connect(tick)
+        self.watch_t.start(30)
+
+    def snap(self, pos=None, keep=False, animate=True):
+        """Stick to the top, left or right edge, anywhere along it (corners too) - the island's own rules.
+        keep = stay on the edge it's on (after a resize)."""
+        try:
+            z, M, gap = self.host.zoom, self.M * self.host.zoom, self.GAP * self.host.zoom
+            r = self.geometry()
+            card = r.adjusted(int(M), int(M), -int(M), -int(M))
+            pos = pos or card.center()
+            scr = QGuiApplication.screenAt(pos) or QGuiApplication.screenAt(card.center()) or self.screen()
+            g = scr.availableGeometry()
+            if keep:
+                dock = self.dock
+            elif pos.y() - g.top() < max(110, int(g.height() * 0.12)):      # along the top, corners included
+                dock = "top"
+            elif pos.x() - g.left() < max(140, int(g.width() * 0.12)):
+                dock = "left"
+            elif g.right() - pos.x() < max(140, int(g.width() * 0.12)):
+                dock = "right"
+            else:                                                            # let go mid-screen: the nearest edge
+                dock = min((card.top() - g.top(), "top"), (card.left() - g.left(), "left"), (g.right() - card.right(), "right"))[1]
+            cw, ch = card.width(), card.height()
+            if dock == "top":
+                cx = max(g.left() + gap, min(card.left(), g.right() + 1 - gap - cw))
+                cy = g.top() + gap
+                self.anchor = cx + cw / 2
+            else:
+                cx = g.left() + gap if dock == "left" else g.right() + 1 - gap - cw
+                cy = max(g.top() + gap, min(card.top(), g.bottom() + 1 - gap - ch))
+                self.anchor = cy + ch / 2
+            end = QRect(int(cx - M), int(cy - M), r.width(), r.height())
+            self.dock = dock
+            if self.ready:
+                self.js("pwdock", json.dumps(dock))
+            if not animate or end == r:
+                self.setGeometry(end)
+            else:
+                anim = QVariantAnimation(self)
+                anim.setStartValue(r)
+                anim.setEndValue(end)
+                anim.setDuration(380)
+                anim.setEasingCurve(QEasingCurve.OutCubic)
+                anim.valueChanged.connect(lambda v: self.setGeometry(v))
+                anim.start()
+                self.anim = anim
+            self.save_t.start(500)
+        except RuntimeError:
+            pass
 
     def _follow(self, how):
         if not self._btn_down():
@@ -1707,6 +1787,7 @@ class PopWin(QWidget):
         def step():
             if not self._btn_down():
                 self.drag_t.stop()
+                self.snap(QCursor.pos(), keep=how == "size")
                 return
             d = QCursor.pos() - c0
             if how == "move":
@@ -2311,8 +2392,9 @@ class Host(QWidget):
         g = scr.availableGeometry()                       # keep it on a screen (a monitor may be gone since)
         w, h = min(w, g.width()), min(h, g.height())
         x, y = max(g.left() - int(M * z), min(x, g.right() - w + int(M * z))), max(g.top() - int(M * z), min(y, g.bottom() - h + int(M * z)))
-        self.popw = PopWin(self, (x, y, w, h))
-        self.state["pop"] = dict(on=True, geo=[x, y, w, h])
+        self.popw = PopWin(self, (x, y, w, h), dock=(self.state.get("pop") or {}).get("dock", "top") if geo and not rect else "top")
+        self.popw.snap(None, keep=bool(geo and not rect), animate=False)   # on an edge from the start, like the island
+        self.state["pop"] = dict(on=True, geo=[x, y, w, h], dock=self.popw.dock)
         self.save_state()
         print(f"player: popped out at {x},{y} {w}x{h}")
 
@@ -2320,7 +2402,7 @@ class Host(QWidget):
         pw = getattr(self, "popw", None)
         if pw is not None:
             r = pw.geometry()
-            self.state["pop"] = dict(on=True, geo=[r.x(), r.y(), r.width(), r.height()])
+            self.state["pop"] = dict(on=True, geo=[r.x(), r.y(), r.width(), r.height()], dock=pw.dock)
             self.save_state()
 
     def pop_close(self, back_in=False):
@@ -2355,6 +2437,7 @@ class Host(QWidget):
                 self.js("spstate", {k2: v for k2, v in st.items() if k2 != "at"})
             if getattr(self, "_away_js", None):
                 self.js("away", True)
+            pw.js("pwdock", json.dumps(pw.dock))
             if not pw.fs_hidden:
                 pw.show()
                 pw.front()
