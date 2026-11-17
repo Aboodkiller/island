@@ -4075,7 +4075,7 @@ function renderMPill() {
       ${dur ? `<div class="bar${m.seek !== false ? " sk" : ""}" ${m.seek !== false ? `data-seek="1"` : ""}><b class="mp-b" style="background:#fff"></b></div>` : ""}
     </div>
     <div class="mpr">
-      <div class="mptop"><span class="mxs">${xBtn("like", 16)}</span><span class="mx" data-a="music_full" title="Bigger player"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span><span class="mx" data-a="music_close" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
+      <div class="mptop"><span class="mxs">${xBtn("like", 16)}</span><span class="mx" data-a="music_vinyl" title="Vinyl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.2"/></svg></span><span class="mx" data-a="music_full" title="Bigger player"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span><span class="mx" data-a="music_close" title="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
       <div class="ctl"><span class="mxa">${xBtn("shuf", 14)}</span><span data-a="media_prev">${I.prev(15)}</span><span class="pp" data-a="media_toggle">${m.playing ? I.pause(16).replace('#f0f2f8','#0a0b0f') : I.play(16).replace('#f0f2f8','#0a0b0f')}</span><span data-a="media_next">${I.next(15)}</span><span class="mxb">${xBtn("rep", 14)}</span></div>
     </div>
   </div>`;
@@ -5086,7 +5086,9 @@ isl.addEventListener("click", e => {
     S.mview = S.lastMview = name === "music_full" ? "full" : "pill";
     send("mview", S.mview); setMode("music"); renderMusic(); return; }
   if (name === "music_close") { closeMusic(); return; }
-  if (name === "mrz") return;                    // the resize grip (handled by its pointer events)
+  if (name === "mrz") return;
+  if (name === "music_vinyl") { S.mstyle = "vinyl"; try { localStorage.setItem("isl_mstyle", "vinyl"); } catch (e) {} clearTimeout(S.musicOutT); S.musicKey = null; S.musicHover = false; S.stay = true;
+    S.mview = S.lastMview = "full"; send("mview", "full"); setMode("music"); renderMusic(); return; }                    // the resize grip (handled by its pointer events)
   if (name === "mstyle") { S.mstyle = S.mstyle === "vinyl" ? "lyrics" : "vinyl"; try { localStorage.setItem("isl_mstyle", S.mstyle); } catch (e) {} S.musicKey = null; renderMusic(); return; }
   if (name === "hud_act") { send("hud_act", v); clearTimeout(S.hudT); S.hudT = setTimeout(hudDone, 60); return; }
   if (name === "tmr") {
