@@ -1709,12 +1709,10 @@ class PopWin(QWidget):
 
     def _watch(self, keep):
         """Windows runs the move/resize itself: poll for the button coming up, then snap."""
-        if self.watch_t is None:
-            self.watch_t = QTimer(self)
-        try:
-            self.watch_t.timeout.disconnect()
-        except Exception:
-            pass
+        if self.watch_t is not None:
+            self.watch_t.stop()
+            self.watch_t.deleteLater()
+        self.watch_t = QTimer(self)
         t0 = time.time()
 
         def tick():
@@ -1777,12 +1775,10 @@ class PopWin(QWidget):
         if not self._btn_down():
             return
         c0, g0 = QCursor.pos(), self.geometry()
-        if self.drag_t is None:
-            self.drag_t = QTimer(self)
-        try:
-            self.drag_t.timeout.disconnect()
-        except Exception:
-            pass
+        if self.drag_t is not None:
+            self.drag_t.stop()
+            self.drag_t.deleteLater()
+        self.drag_t = QTimer(self)
 
         def step():
             if not self._btn_down():
@@ -6917,7 +6913,7 @@ class Host(QWidget):
             self._sysx = sx
             self.js("sysx", sx)
 
-    SP_VER = 7          # island-bridge.js VER this island expects (older = run "spicetify apply")
+    SP_VER = 8          # island-bridge.js VER this island expects (older = run "spicetify apply")
 
     def sp_live(self):
         """Spotify is open with the bridge extension (it posts its position every second)."""
@@ -7098,6 +7094,10 @@ class Host(QWidget):
             self.deck_push("sptracks", dict(uri=uri, offset=off, total=total, name=str(j.get("name") or "")[:120],
                                             img=img[:400] if img.startswith("https://") else "", items=items,
                                             error=str(j.get("error") or "")[:200] if not items else ""))
+        elif j.get("type") == "spicyinfo":         # v8: Spicy Lyrics had no word timing for this song - why
+            st = [str(x)[:60] for x in (j.get("stores") or [])[:6]]
+            print(f"lyrics: no Spicy Lyrics timing for {str(j.get('title') or '')[:80]} "
+                  + (f"(its caches: {', '.join(st)})" if st else "(no Spicy Lyrics cache in Spotify - is Spicy Lyrics installed?)"))
         elif j.get("type") == "search":
             items = []
             for it in (j.get("items") or [])[:12]:

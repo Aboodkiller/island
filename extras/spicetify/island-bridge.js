@@ -9,7 +9,7 @@
   const P = window.Spicetify && Spicetify.Player;
   if (!P || !Spicetify.CosmosAsync || !P.data) { setTimeout(islandBridge, 600); return; }
   const URL = "http://127.0.0.1:47812/spotify";
-  const VER = 7;                                     // the island tells the deck to run "spicetify apply" when this is older
+  const VER = 8;                                     // the island tells the deck to run "spicetify apply" when this is older
   const post = body => fetch(URL, {method: "POST", headers: {"Content-Type": "text/plain"}, body: JSON.stringify(body)}).catch(() => null);
   let cur = null, title = "", last = {pos: 0, at: 0, playing: false};
 
@@ -120,26 +120,48 @@
 
   function spicyWatch(s, colors) {
     const id = s.uri.split(":")[2];
-    [700, 2500, 6000, 12000].forEach(ms => setTimeout(async () => {
+    [700, 2500, 6000, 12000, 20000].forEach((ms, k, all) => setTimeout(async () => {
       if (cur !== s.uri || spicyDone === s.uri) return;
       const got = await spicy(id);
-      if (!got || cur !== s.uri || spicyDone === s.uri) return;
-      spicyDone = s.uri;
-      const nsyl = got[0].reduce((a, l) => a + (l[2] ? l[2].length : 0), 0);
-      post(Object.assign({type: "song", lines: got[0], sync: got[1], colors, via: "spicy", nsyl}, s));
+      if (got && cur === s.uri && spicyDone !== s.uri) {
+        spicyDone = s.uri;
+        const nsyl = got[0].reduce((a, l) => a + (l[2] ? l[2].length : 0), 0);
+        post(Object.assign({type: "song", lines: got[0], sync: got[1], colors, via: "spicy", nsyl}, s));
+      } else if (k === all.length - 1 && cur === s.uri) {      // v8: say why there was nothing (the island logs it)
+        post({type: "spicyinfo", uri: s.uri, title: s.title, stores: await spicyStores(true), v: VER});
+      }
     }, ms));
   }
   let spicyDone = null;
 
-  async function spicy(id) {            // Spicy Lyrics keeps each track's lyrics in this cache (seconds, per syllable)
+  // v8: every Spicy Lyrics lyrics cache, newest name first (it was "SpicyLyrics_LyricsStore_g1"; an update can rename it)
+  async function spicyStores(withCount) {
     try {
-      if (!window.caches || !(await caches.has("SpicyLyrics_LyricsStore_g1"))) return null;
-      const r = await (await caches.open("SpicyLyrics_LyricsStore_g1")).match("/" + id);
-      if (!r) return null;
-      const w = await r.json();
-      if (w && w.ExpiresAt && w.ExpiresAt < Date.now()) return null;
-      return fromSpicy(w && w.Content ? w.Content : w);
-    } catch (e) { return null; }
+      if (!window.caches) return [];
+      const names = (await caches.keys()).filter(n => /spicy/i.test(n) && /lyric/i.test(n)).sort().reverse();
+      if (!withCount) return names;
+      const out = [];
+      for (const n of names) { try { out.push(n + ":" + (await (await caches.open(n)).keys()).length); } catch (e) { out.push(n + ":?"); } }
+      return out;
+    } catch (e) { return []; }
+  }
+
+  async function spicy(id) {            // Spicy Lyrics keeps each track's lyrics in its cache (seconds, per syllable)
+    try {
+      for (const name of await spicyStores(false)) {
+        const c = await caches.open(name);
+        let r = await c.match("/" + id);
+        if (!r) { const hit = (await c.keys()).find(q => q.url.endsWith("/" + id) || q.url.includes(id)); if (hit) r = await c.match(hit); }
+        if (!r) continue;
+        let w = await r.json();
+        if (w && w.ExpiresAt && w.ExpiresAt < Date.now()) continue;
+        let L = w && w.Content !== undefined && !Array.isArray(w.Content) ? w.Content : w;
+        if (typeof L === "string") { try { L = JSON.parse(L); } catch (e) { continue; } }
+        const got = fromSpicy(L);
+        if (got) return got;
+      }
+    } catch (e) {}
+    return null;
   }
 
   function fromSpicy(L) {
