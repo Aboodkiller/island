@@ -3838,7 +3838,7 @@ class Host(QWidget):
     def update_meter(self):
         m = self.media.last
         self.meter.want(bool(self.settings.get("viz") and m and m.get("playing") and not self.hidden_fs
-                             and not getattr(self, "_away_js", False) and self.mode in ("pill", "peek", "live", "panel")))
+                             and not getattr(self, "_away_js", False) and self.mode in ("pill", "peek", "live", "panel", "music")))
 
     def on_lyrics(self, x):
         if (x.get("src") != "spotify" and self._lyr and self._lyr.get("src") == "spotify"

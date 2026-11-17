@@ -31,3 +31,5 @@ _to_delete/
 models/
 plans/*.bak
 update.json
+*.orig
+*.rej

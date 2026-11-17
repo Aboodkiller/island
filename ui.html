@@ -414,17 +414,46 @@ body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;anima
 .vrec{position:absolute;left:10px;top:5px;width:250px;height:250px;border-radius:50%;
   background:radial-gradient(circle,transparent 0 21%,rgba(0,0,0,.55) 21.5% 23%,transparent 23.5% 96%,rgba(255,255,255,.07) 97%,#050506 98.5%),
     repeating-radial-gradient(circle,#0c0c0f 0 1.15px,#1b1b20 1.6px,#0c0c0f 2.3px);
-  box-shadow:0 22px 50px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.06);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
   animation:vspin 1.8s linear infinite;animation-play-state:paused}
 .vwrap.spin .vrec{animation-play-state:running}
 @keyframes vspin{to{transform:rotate(360deg)}}
+/* the shadow, the spindle and the light sit still under/over the record: only the grooves + label turn (r38) */
+.vbase{position:absolute;left:10px;top:5px;width:250px;height:250px;border-radius:50%;background:#050506;box-shadow:0 22px 50px rgba(0,0,0,.65)}
 .vlab{position:absolute;left:30%;top:30%;width:40%;height:40%;border-radius:50%;background:#2a2d35 center/cover;
   box-shadow:0 0 0 3px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.12)}
-.vhole{position:absolute;left:50%;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;
+.vhole{position:absolute;left:135px;top:130px;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;
   background:radial-gradient(circle at 40% 35%,#f4f4f6,#8b8f99);box-shadow:0 1px 3px rgba(0,0,0,.6)}
 .vshine{position:absolute;left:10px;top:5px;width:250px;height:250px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;
   background:conic-gradient(from 25deg,transparent 0 6%,rgba(255,255,255,.13) 11%,transparent 17%,transparent 50%,rgba(255,255,255,.09) 57%,transparent 64%);
   -webkit-mask:radial-gradient(circle,transparent 0 21%,#000 22%)}
+/* the aura (r38b): while the record spins it lets out the cover's colour: a swirling ring on the edge, sound-wave rings
+   and sparks orbiting the other way. With "Live music bars" on it pumps with the real volume of what's playing */
+.vaura{position:absolute;left:135px;top:130px;width:0;height:0;opacity:0;transition:opacity .9s,transform .12s ease-out;pointer-events:none;
+  transform:scale(calc(1 + var(--lv,0) * .14))}
+.vwrap.spin .vaura{opacity:1}
+body:not(.viz) .vwrap.spin .vaura{animation:vbr 2.6s ease-in-out infinite}
+@keyframes vbr{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+.vaura>i{position:absolute;border-radius:50%}
+.vaura *{animation-play-state:paused!important}
+.vwrap.spin .vaura *{animation-play-state:running!important}
+body.away .vaura,body.away .vaura *{animation-play-state:paused!important}
+.vsw{left:-158px;top:-158px;width:316px;height:316px;
+  background:conic-gradient(from 0deg,var(--glowc,#1ed760) 0 6%,transparent 17% 29%,color-mix(in srgb,var(--glowc,#1ed760) 40%,#fff) 38%,transparent 50% 61%,var(--glowc,#1ed760) 72%,transparent 85%,var(--glowc,#1ed760));
+  -webkit-mask:radial-gradient(circle closest-side,transparent 0 74%,rgba(0,0,0,.9) 80%,rgba(0,0,0,.55) 88%,transparent 100%);
+  animation:vspin 6.5s linear infinite reverse}
+.vwv{left:-125px;top:-125px;width:250px;height:250px;opacity:0;border:1.5px solid color-mix(in srgb,var(--glowc,#1ed760) 60%,#fff);
+  box-shadow:0 0 16px color-mix(in srgb,var(--glowc,#1ed760) 80%,transparent),inset 0 0 10px color-mix(in srgb,var(--glowc,#1ed760) 60%,transparent);
+  animation:vwave 2.7s cubic-bezier(.15,.55,.35,1) infinite}
+.vwv:nth-child(3){animation-delay:.9s}.vwv:nth-child(4){animation-delay:1.8s}
+@keyframes vwave{0%{transform:scale(.99);opacity:.6}100%{transform:scale(1.26);opacity:0}}
+.vemb{left:0;top:0;width:0;height:0;animation:vspin 13s linear infinite}
+.vemb b{position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#fff;
+  box-shadow:0 0 5px 2px color-mix(in srgb,var(--glowc,#1ed760) 85%,transparent);
+  transform:rotate(var(--a)) translateY(calc(-1 * var(--r)));animation:vtw 1.7s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes vtw{0%,100%{opacity:.1}50%{opacity:1}}
+.vwrap.spin .vglow{opacity:calc(.34 + var(--lv,0) * .4)}
+.music .mtop,.music .mbot{position:relative;z-index:2}
 .vtone{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.55))}
 .varm{transform:rotate(0deg);transition:transform 1s cubic-bezier(.3,.75,.25,1)}
 .vwrap.spin .varm{transform:rotate(20deg)}
@@ -695,10 +724,15 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .sempty b{font-size:16px;color:#fff}
 .sempty span{font-size:13px;line-height:1.45;max-width:330px}
 .sempty .sbig{margin-top:6px}
-.bigset{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;cursor:pointer;color:var(--mut);background:rgba(255,255,255,.05)}
-.bigset b{font-size:13px;color:#fff}
-.bigset span{font-size:11px}
-.bigset:hover{background:rgba(255,255,255,.1)}
+.skl{display:flex;flex-direction:column;gap:9px;padding:8px 4px}
+.skl i{height:32px;border-radius:12px;background:linear-gradient(90deg,rgba(255,255,255,.04) 30%,rgba(255,255,255,.1) 50%,rgba(255,255,255,.04) 70%) 0 0/300% 100%;animation:skl 1.3s linear infinite}
+.skl i:nth-child(2){width:72%}
+@keyframes skl{from{background-position:100% 0}to{background-position:0 0}}
+.bigset{display:flex;align-items:center;gap:7px;height:30px;padding:0 6px 0 11px;border-radius:15px;cursor:pointer;color:var(--mut);background:rgba(255,255,255,.05);
+  border:1px dashed rgba(255,255,255,.13);transition:background .2s,color .2s}
+.bigset b{font-size:12.5px;font-weight:650;color:inherit}
+.bigset i{font-style:normal;width:20px;height:20px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.08);font-size:14px;font-weight:600;line-height:1}
+.bigset:hover{background:rgba(255,255,255,.1);color:#fff}
 .cdc{cursor:pointer}
 /* r36 one-screen tabs */
 .ohero{padding:14px 15px}
@@ -1788,6 +1822,10 @@ body.notch.dock-top:not(.th-berserk):not(.th-qawi){--bg:#000}
 .dw-t:hover{color:#e5e5ea;background:rgba(255,255,255,.07)}
 .dw-t:active{transform:scale(.92)}
 .dw-t.on{color:#fff;background:rgba(255,255,255,.14)}
+.dw-t{grid-auto-flow:column;gap:0}
+.dw-t .dwl{font-style:normal;font-size:12.5px;font-weight:650;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;max-width:0;opacity:0;
+  transition:max-width .38s var(--soft),opacity .25s,margin .38s var(--soft)}
+.dw-t.on .dwl{max-width:110px;opacity:1;margin-left:7px}
 .dw-t .nb{position:absolute;top:3px;right:6px;min-width:13px;height:13px;padding:0 3px;border-radius:7px;background:var(--bad);color:#fff;
   font:800 8.5px/13px var(--mono);text-align:center}
 .dw-r{margin-left:auto;display:flex;align-items:center;gap:2px;color:#8e8e93}
@@ -2167,9 +2205,9 @@ function size(mode) {
   const mini = miniSize(side);
   if (mode === "pill" && S.tucked) return side ? [6, 150, 3] : [150, 6, 3];
   const ly = lyrShown() ? 58 : 0;
-  if (!side) return ({pill:S.compact ? mini : [S.pillNat || pw,46,23], peek:dwSize(false), panel:[540,Math.min(720,vh-28),30],
+  if (!side) return ({pill:S.compact ? mini : [S.pillNat || pw,46,23], peek:dwSize(false), panel:[540,panelH(Math.min(720,vh-28)),30],
                       toast:[600,tH(false),30], live:[480,62,31], sound:[Math.max(660, pw + 20),sndH,30], music:S.mview === "full" ? mFull(false, vh) : [660,128,64], hud:[hudW,hudH,23], cmd:[580,S.cmdH || cmdH,28], imenu:[400,S.imH || 380,28], voice:[460,S.voA ? 64 + 19 * (Math.min(5, Math.ceil(S.voA / 54)) - 1) + 8 : 64,32]})[mode];
-  return ({pill:S.compact ? mini : [66,292,33], peek:dwSize(true), panel:[540,Math.min(760,vh-20),30],
+  return ({pill:S.compact ? mini : [66,292,33], peek:dwSize(true), panel:[540,panelH(Math.min(760,vh-20)),30],
            toast:[380,tH(true),30], live:[300,84,30], sound:[360,sndH,30], music:S.mview === "full" ? mFull(true, vh) : [360,156,32], hud:[Math.min(360, hudW),hudH + 6,24], cmd:[380,S.cmdH || cmdH,26], imenu:[360,S.imH || 400,26], voice:[320,S.voA ? Math.max(120, 70 + 19 * Math.min(6, Math.ceil(S.voA / 30))) : 120,30]})[mode];
 }
 /* big player size: drag the corner grip (r31). Saved per dock (top / side); double-click the grip = default size */
@@ -2189,6 +2227,7 @@ function mApplySize() {               // live, while dragging: no mode change, n
   if (S.sxy) applyShift();
   vinylFit();
 }
+const VEMB = Array.from({length: 11}, (_, k) => `<b style="--a:${(k * 360 / 11 + (k % 3) * 9).toFixed(1)}deg;--r:${136 + (k * 7) % 17}px;--d:-${((k * .61) % 1.7).toFixed(2)}s"></b>`).join("");
 function vinylFit() {                 // the record grows/shrinks with the player
   const mu = document.querySelector("#L-music .music"); if (mu) mu.classList.toggle("narrow", size("music")[0] < 470);
   const b = document.querySelector("#L-music .mbig"), v = b && b.querySelector(".vwrap"); if (!v) return;
@@ -2947,7 +2986,7 @@ function renderPeek() {
   if (t === "clip" && Date.now() - (S.clipAt || 0) > 1500) { S.clipAt = Date.now(); send("dtab", "clip"); }      // fresh list each time
   if (S.bellSeen === undefined) { try { S.bellSeen = +localStorage.getItem("isl_bell") || Date.now(); } catch (e) { S.bellSeen = Date.now(); } }
   const unseen = (S.history || []).filter(x => x.at > S.bellSeen && !x.quiet).length;
-  const tabs = dwTabs().map(k => `<span class="dw-t ${k === t ? "on" : ""}" data-a="dtab" data-v="${k}" title="${DW_NAME[k]}">${dwIco(k)}${k === "bell" && unseen && t !== "bell" ? `<i class="nb">${Math.min(9, unseen)}</i>` : ""}</span>`).join("");
+  const tabs = dwTabs().map(k => `<span class="dw-t ${k === t ? "on" : ""}" data-a="dtab" data-v="${k}" title="${DW_NAME[k]}">${dwIco(k)}${side ? "" : `<em class="dwl">${DW_NAME[k]}</em>`}${k === "bell" && unseen && t !== "bell" ? `<i class="nb">${Math.min(9, unseen)}</i>` : ""}</span>`).join("");
   const art = mediaOn() && m.art && t === "lyr";
   const bgS = art ? (pbOK(m.art) ? "background-image:var(--artb)" : "background-image:var(--art)") : "";
   const h = `<div class="dw-bg ${art ? "on" : ""}${art && pbOK(m.art) ? " pb" : ""}" style="${bgS}"></div>
@@ -2962,6 +3001,12 @@ function renderPeek() {
   if (ton) {
     if (!hd.dataset.ind) { hd.dataset.ind = 1; hd.style.setProperty("--it", "0s"); requestAnimationFrame(() => requestAnimationFrame(() => hd.style.removeProperty("--it"))); }
     hd.style.setProperty("--ix", ton.offsetLeft + "px"); hd.style.setProperty("--iw", ton.offsetWidth + "px"); hd.style.setProperty("--io", 1);
+    if (S.dwLblT !== t) {            // the name slides open: the pill follows the tab while it grows (r39)
+      S.dwLblT = t; const t0 = performance.now();
+      const fl = () => { const o = hd.querySelector(".dw-t.on"); if (!o) return; hd.style.setProperty("--ix", o.offsetLeft + "px"); hd.style.setProperty("--iw", o.offsetWidth + "px");
+        if (performance.now() - t0 < 460) requestAnimationFrame(fl); };
+      requestAnimationFrame(fl);
+    }
   }
   const pane = root.querySelector(".dw-p");
   if (pane !== S.peekP) { S.peekP = pane; S.peekBody = null; }
@@ -3062,7 +3107,7 @@ function adevRefresh() {
 }
 function soundRows() {
   const s = S.sound;
-  if (!s) return `<div class="ds" style="padding:10px 6px">Loading sound…</div>`;
+  if (!s) return `<div class="skl"><i></i><i></i></div>`;
   if (!s.ok) return `<div class="ds" style="padding:10px 6px">${esc(s.why || "Sound control isn't available.")}</div>`;
   const row = (key, name, icon, v, mute, live, master) => `<div class="vrow ${master ? "master" : ""} ${mute ? "muted" : ""} ${live ? "live" : ""}" data-vol="${esc(key)}">
     <div class="vico" data-a="mute" data-v="${esc(key)}" title="${mute ? "Unmute" : "Mute"}">${icon}</div>
@@ -3154,11 +3199,11 @@ function renderPanel(force) {
   let h = `<div class="row"><span class="t" style="font-size:13.5px">${esc(day.label)}</span>
       <span class="mut" style="font-size:12px">${T(new Date().toTimeString().slice(0,5))}</span><div class="sp"></div>
       ${S.wx ? `<span class="mut" style="font-size:12px;margin-right:6px">${S.wx.icon} ${Math.round(S.wx.t)}° ${esc(S.wx.city||"")}</span>` : ""}
-      <div class="nav"><span data-a="day" data-v="-1">‹</span><span data-a="day" data-v="0" style="font-size:9px">●</span><span data-a="day" data-v="1">›</span>${simple ? "" : `<span data-a="compact" title="${S.compact ? "Full island" : "Compact island"}" style="font-size:11px">${S.compact ? "⤢" : "⤡"}</span>`}<span data-a="close">⌃</span></div></div>
+      <div class="nav"><span data-a="day" data-v="-1" title="Day before">‹</span>${day.offset || devOn() ? `<span data-a="day" data-v="0" style="font-size:9px" title="Back to today">●</span>` : ""}<span data-a="day" data-v="1" title="Next day">›</span>${simple || !devOn() ? "" : `<span data-a="compact" title="${S.compact ? "Full island" : "Compact island"}" style="font-size:11px">${S.compact ? "⤢" : "⤡"}</span>`}<span data-a="close" title="Close">⌃</span></div></div>
     <div class="row" style="gap:12px">${d.big ? `<div class="big" data-a="big_set" title="big &lt;what&gt; &lt;date&gt; to change it">${roll("exam", d.big.days)}</div><div class="col" data-a="big_set" style="cursor:pointer;min-width:0"><span class="t ell" style="font-size:13.5px">days to ${esc(d.big.title)}</span><span class="mut" style="font-size:11.5px">${esc(d.big.label)}</span></div>`
-      : `<div class="bigset" data-a="big_set">${hico("cal", 18)}<div class="col"><b>Count down to something</b><span>exam, trip, launch… tap to set</span></div></div>`}<div class="sp"></div>
+      : `<div class="bigset" data-a="big_set" title="Count down to an exam, a trip, a launch…">${hico("cal", 15)}<b>Countdown</b><i>+</i></div>`}<div class="sp"></div>
       ${simple && !d.gym ? "" : `<div class="col" style="align-items:center;gap:1px"><span class="ico" style="color:#ff7a4d">${I.dumb()}${d.gym}</span><span class="dim" style="font-size:10px">gym</span></div>`}
-      ${ring(50, day.pct/100, day.pct>=100?"#4ade80":"#a78bfa", 4.5, `<span style="font-size:12px">${day.pct}%</span>`)}</div>
+      <span title="${day.pct}% of ${day.offset ? "that day" : "today"} done" style="display:inline-flex">${ring(50, day.pct/100, day.pct>=100?"#4ade80":"#a78bfa", 4.5, `<span style="font-size:12px">${day.pct}%</span>`)}</span></div>
     <div class="tabs" id="tabs"><div class="slider" id="slider"></div>${tabsNow().map(([t,l])=>`<div data-a="tab" data-v="${t}" class="${t===S.tab?"on":""} ${t==="Settings"||t==="Alerts"?"gear":""}" title="${t === "Alerts" ? "Notification history" : t}">${l}${t === "Study" && S.cards && S.cards.n ? `<i class="tbadge">${S.cards.n}</i>` : ""}</div>`).join("")}</div>`;
   setSection("ph", h);
   moveSlider();
@@ -3175,6 +3220,24 @@ function renderPanel(force) {
   setSection("p-Alerts", paneAlerts());
   setSection("p-Settings", paneSettings());
   syncMediaPos();
+  panelFit(); requestAnimationFrame(panelFit);        // again once fonts / images have laid out
+}
+/* r39: the panel is only as tall as what's in it (Apple: "only use the space you need"), per tab; long views still
+   stop at the old height and scroll */
+function panelH(max) { const n = S.panelHs && S.panelHs[S.tab]; return n ? Math.max(Math.min(400, max), Math.min(max, n)) : max; }
+function panelFit() {
+  if (S.mode !== "panel" || DASH || DECK) return;
+  const ph = $("ph"), pe = $("p-" + S.tab); if (!ph || !pe || !pe.classList.contains("on")) return;
+  const need = Math.ceil(ph.offsetHeight + pe.scrollHeight + 22);
+  S.panelHs = S.panelHs || {};
+  const old = S.panelHs[S.tab]; if (old && Math.abs(old - need) < 8) return;
+  S.panelHs[S.tab] = need;
+  const [w, h, r] = size("panel"), cur = parseFloat(isl.style.getPropertyValue("--h")) || 0;
+  if (Math.abs(h - cur) < 2) return;
+  isl.style.setProperty("--h", h + "px"); shapeTo(w, h, r);
+  const Ly = $("L-panel"); if (Ly) Ly.style.setProperty("--lh", h + "px");
+  if (S.sxy) applyShift();
+  reportRect(); setTimeout(reportRect, 620);
 }
 const slRO = window.ResizeObserver ? new ResizeObserver(() => moveSlider()) : null;
 function moveSlider() {
@@ -3311,7 +3374,7 @@ function welcomeCard() {          // simple mode, first days: the 4 things worth
   const r = (ic, a, b) => `<div class="wlr"><span class="wli">${hico(ic, 17)}</span><div class="col"><b>${a}</b><span>${b}</span></div></div>`;
   return `<div class="welc"><div class="row"><b class="wlt">New here? 4 things, that's it</b><div class="sp"></div><span class="sbig ok" data-a="set" data-v="welcomed" data-x="true">Got it</span></div>
     ${r("cursor", "Hover the island", "a quick look: music, next thing, widgets")}${r("cal", "Click it", "your whole day, tick things off")}
-    ${r("grid", "Right-click it", "the menu: timer, water, settings…")}${r("kbd", "Win + Alt + Space", "type anything: <i>timer 25</i> · <i>water 500</i> · <i>big exam 20 jan</i>")}</div>`;
+    ${r("grid", "Right-click it", "quick settings: move it, restart, quit")}${r("kbd", "Win + Alt + Space", "type anything: <i>timer 25</i> · <i>water 500</i> · <i>big exam 20 jan</i>")}</div>`;
 }
 /* r36: every tab fits one screen unless you ask for more (Dev mode = the full views, like before) */
 const devOn = () => !!(S.settings && S.settings.values && S.settings.values.dev);
@@ -4131,6 +4194,7 @@ setInterval(() => { if (S.lyr && S.media && S.media.playing && S.mode !== "toast
 setInterval(() => {   // the level stream stopped (paused, hidden, setting off): back to the CSS bars
   if (document.body.classList.contains("viz") && Date.now() - (S.lvlAt || 0) > 700) {
     document.body.classList.remove("viz"); document.querySelectorAll(".eq i").forEach(i => i.style.transform = ""); isl.style.setProperty("--bob", 0);
+    const vw = document.querySelector("#L-music .vwrap"); if (vw) vw.style.removeProperty("--lv");
   }
 }, 500);
 isl.addEventListener("mousemove", e => {
@@ -4172,9 +4236,9 @@ function renderMusic() {
     <div class="mtop"><div class="art" data-a="music_small" title="Smaller player" style="width:52px;height:52px;cursor:pointer;${art}"></div>
       <div class="col" style="flex:1;gap:2px;min-width:0"><span class="t mtt" title="${esc(m.title)}">${esc(m.title)}</span><span class="mut ell" style="font-size:12.5px">${esc(m.artist || "")}${appChip(m)}</span></div>
       <span class="mxs">${xBtn("like", 18)}</span><div class="eq"><i></i><i></i><i></i><i></i></div><span class="mx ${V ? "on" : ""}" data-a="mstyle" title="${V ? "Show lyrics" : "Vinyl mode"}">${V ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" stroke-linecap="round" opacity=".6"/></svg>`}</span><span class="mx" data-a="music_small" title="Smaller player"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></span><span class="mx" data-a="music_close" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
-    ${V ? `<div class="mbig"><div class="vwrap ${m.playing ? "spin" : ""}"><div class="vglow"></div>
-        <div class="vrec" style="animation-delay:-${(vang / 360 * 1.8).toFixed(3)}s"><div class="vlab" style="${art}"></div><i class="vhole"></i></div>
-        <div class="vshine"></div><svg class="vtone" viewBox="0 0 300 262" width="300" height="262"><defs><linearGradient id="vtm" x1="0" x2="1"><stop offset="0" stop-color="#eef1f6"/><stop offset=".5" stop-color="#aab1bd"/><stop offset="1" stop-color="#6c7380"/></linearGradient><radialGradient id="vtb" cx=".4" cy=".35"><stop offset="0" stop-color="#4a4f5a"/><stop offset="1" stop-color="#16181d"/></radialGradient></defs><circle cx="282" cy="22" r="19" fill="url(#vtb)" stroke="rgba(255,255,255,.12)"/><g class="varm" style="transform-origin:282px 22px"><rect x="275" y="-6" width="14" height="16" rx="4" fill="#3a3e47" stroke="rgba(255,255,255,.15)"/><path d="M282 22 L282 150 Q282 186 266 206" fill="none" stroke="url(#vtm)" stroke-width="5" stroke-linecap="round"/><g transform="rotate(28 266 210)"><rect x="257" y="200" width="18" height="24" rx="3.5" fill="#2b2f37" stroke="url(#vtm)" stroke-width="1.6"/><rect x="261" y="214" width="10" height="8" rx="1.5" fill="#d9a441"/><path d="M264.5 222 L266 229 L267.5 222Z" fill="#f4f4f5"/></g><circle cx="282" cy="22" r="7" fill="url(#vtm)"/></g></svg></div></div>`
+    ${V ? `<div class="mbig"><div class="vwrap ${m.playing ? "spin" : ""}"><div class="vglow"></div><div class="vaura"><i class="vsw"></i><i class="vwv"></i><i class="vwv"></i><i class="vwv"></i><i class="vemb">${VEMB}</i></div><div class="vbase"></div>
+        <div class="vrec" style="animation-delay:-${(vang / 360 * 1.8).toFixed(3)}s"><div class="vlab" style="${art}"></div></div>
+        <div class="vshine"></div><i class="vhole"></i><svg class="vtone" viewBox="0 0 300 262" width="300" height="262"><defs><linearGradient id="vtm" x1="0" x2="1"><stop offset="0" stop-color="#eef1f6"/><stop offset=".5" stop-color="#aab1bd"/><stop offset="1" stop-color="#6c7380"/></linearGradient><radialGradient id="vtb" cx=".4" cy=".35"><stop offset="0" stop-color="#4a4f5a"/><stop offset="1" stop-color="#16181d"/></radialGradient></defs><circle cx="282" cy="22" r="19" fill="url(#vtb)" stroke="rgba(255,255,255,.12)"/><g class="varm" style="transform-origin:282px 22px"><rect x="275" y="-6" width="14" height="16" rx="4" fill="#3a3e47" stroke="rgba(255,255,255,.15)"/><path d="M282 22 L282 150 Q282 186 266 206" fill="none" stroke="url(#vtm)" stroke-width="5" stroke-linecap="round"/><g transform="rotate(28 266 210)"><rect x="257" y="200" width="18" height="24" rx="3.5" fill="#2b2f37" stroke="url(#vtm)" stroke-width="1.6"/><rect x="261" y="214" width="10" height="8" rx="1.5" fill="#d9a441"/><path d="M264.5 222 L266 229 L267.5 222Z" fill="#f4f4f5"/></g><circle cx="282" cy="22" r="7" fill="url(#vtm)"/></g></svg></div></div>`
     : L ? `<div class="mwin"><div class="mlyr" id="mlyr">${lines.map((l, i) => `<div class="ml ${AR.test(l[1] || "") ? "ar" : ""}" data-i="${i}">${l[1] ? esc(l[1]) : DOTS}</div>`).join("")}</div></div>`
         : `<div class="mbig"><div class="art" style="width:240px;height:240px;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.5);${art}"></div></div>`}
     <div class="mbot">${dur ? `<div class="row" style="gap:8px;font-size:10.5px;color:var(--mut);font-variant-numeric:tabular-nums"><span class="mp-a"></span><div class="bar${m.seek !== false ? " sk" : ""}" ${m.seek !== false ? `data-seek="1"` : ""} style="flex:1"><b class="mp-b" style="background:#fff"></b></div><span>${fmtS(dur)}</span></div>` : ""}
@@ -4461,10 +4525,10 @@ function renderIMenu() {
     <div class="imr"><span>Position</span>${seg("dock", [["top", "Top"], ["left", "Left"], ["right", "Right"]], d.dock)}</div>`;
   if (scr.length > 1) {
     h += `<div class="imr"><span>Screen</span>${seg("screen", scr.map(x => [x.i, `${x.i + 1}${x.main ? `<i class="mn" title="main"></i>` : ""}`]), here)}</div>`;
-    h += `<div class="imr"><span>Dashboard</span>${seg("dash", [[-1, "Off"]].concat(scr.map(x => [x.i, `On ${x.i + 1}`])), dash)}</div>`;
+    if (devOn() || dash >= 0) h += `<div class="imr"><span>Dashboard</span>${seg("dash", [[-1, "Off"]].concat(scr.map(x => [x.i, `On ${x.i + 1}`])), dash)}</div>`;
   }
   h += `<div class="imt">${tg("compact", "Compact")}${tg("follow", "Follow the mouse")}${tg("autohide", "Auto-hide")}</div>
-    <div class="imf"><span data-a="im" data-v="refresh">${hico("redo", 14)}Refresh</span><span data-a="im" data-v="restart">${hico("bolt", 14)}Restart</span><span data-a="im" data-v="test">${hico("bell", 14)}Test</span><span class="q ${S.qArm > Date.now() ? "arm" : ""}" data-a="im" data-v="quit">${S.qArm > Date.now() ? "Tap again" : "Quit"}</span></div></div>`;
+    <div class="imf">${devOn() ? `<span data-a="im" data-v="refresh">${hico("redo", 14)}Refresh</span>` : ""}<span data-a="im" data-v="restart">${hico("bolt", 14)}Restart</span>${devOn() ? `<span data-a="im" data-v="test">${hico("bell", 14)}Test</span>` : ""}<span class="q ${S.qArm > Date.now() ? "arm" : ""}" data-a="im" data-v="quit">${S.qArm > Date.now() ? "Tap again" : "Quit"}</span></div></div>`;
   $("L-imenu").innerHTML = h;
   const el = $("L-imenu").firstElementChild;
   el.style.height = "auto"; el.style.width = (S.dock !== "top" ? 360 : 400) + "px";
@@ -4586,6 +4650,7 @@ window.island = {
         S.lvPrev = L;
       }
     }
+    if (S.mode === "music") { const vw = document.querySelector("#L-music .vwrap"); if (vw) vw.style.setProperty("--lv", L.toFixed(3)); }   // the vinyl aura pumps
     document.querySelectorAll(".layer.on .playing .eq").forEach(eq => {
       const is = eq.children;
       for (let k = 0; k < is.length; k++) { const w = .5 + .5 * Math.abs(Math.sin(t * (2.3 + k * 1.37) + k * 1.9)); is[k].style.transform = `scaleY(${(Math.max(3, 3 + 10 * L * w) / 13).toFixed(3)})`; }
