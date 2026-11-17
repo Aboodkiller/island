@@ -1822,6 +1822,8 @@ class Host(QWidget):
         super().__init__(None)
         self.model = core.Model()
         self.state = self.load_state()
+        if not self.state.get("home43"):          # r43: the player pops out now, so the island goes home: top, dead centre
+            self.state.update(home43=True, dock="top", anchor=None)
         self.fired = set(self.state.get("fired", []))
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -3231,6 +3233,8 @@ class Host(QWidget):
         cy = self.y() + (r.center().y() if r is not None else self.height() // 2)
         if pos.y() - g.top() < max(110, int(g.height() * 0.12)):     # along the top, corners included: stays on top
             dock, a = "top", cx
+            if abs(cx - g.center().x()) < max(110, int(g.width() * 0.09)):
+                a = None                     # r43: near the middle = snaps to dead centre, where a real island sits
         elif pos.x() - g.left() < zone:
             dock, a = "left", cy
         elif g.right() - pos.x() < zone:
