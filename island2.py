@@ -327,6 +327,24 @@ def item_json(m, t, day, live):
     return out
 
 
+def ram_top():
+    """Log the biggest RAM users on the whole PC (working set, summed per app) - read-only, every 10 min."""
+    try:
+        import psutil
+        tot, agg = psutil.virtual_memory(), {}
+        for pr in psutil.process_iter(["name", "memory_info"]):
+            try:
+                n = (pr.info["name"] or "?").replace(".exe", "")
+                agg[n] = agg.get(n, 0) + pr.info["memory_info"].rss
+            except Exception:
+                continue
+        top = sorted(agg.items(), key=lambda kv: -kv[1])[:10]
+        print(f"ram top: {tot.percent:.0f}% of {tot.total / 2**30:.1f} GB used · "
+              + " · ".join(f"{n} {v / 2**30:.2f} GB" if v >= 2**30 else f"{n} {v / 2**20:.0f} MB" for n, v in top))
+    except Exception as e:
+        print("ram top:", e)
+
+
 def big_countdown(m, today):
     """The one big thing to count down to: your pick (life.json "big": title + date), else the study plan's exam_day
     (titled by its "exam_name", or your pick's title). None = nothing to count down to: the island hides it."""
@@ -1756,6 +1774,7 @@ class Host(QWidget):
         self.upd_timer.timeout.connect(self.update_check)
         self.upd_timer.start(6 * 3600_000)
         QTimer.singleShot(180_000, self.update_check)
+        QTimer.singleShot(60_000, lambda: threading.Thread(target=ram_top, daemon=True).start())   # first RAM picture
         try:                              # 16 GB and less: tighter memory limits, trim twice as often
             import psutil
             self.ram_gb = psutil.virtual_memory().total / 2**30
@@ -2145,7 +2164,8 @@ class Host(QWidget):
             st = getattr(self, "sp_state", None)
             if st:
                 self.js("spstate", {k2: v for k2, v in st.items() if k2 != "at"})
-            self._wall_sig = None
+            if getattr(self, "_wall", None):     # same wallpaper: resend the tint instead of decoding the image again
+                self.js("wall", self._wall)
             self.wall_sync()
             if getattr(self, "_adev", None):
                 self.js("adev", self._adev)
@@ -5875,7 +5895,9 @@ class Host(QWidget):
                 if not secs:
                     return self.hud("info", "Timer: try 25, 90s, 1h30", ms=1800)
                 self.add_timer(secs, t[len(t) - len(label):] if label else "")
-                return self.hud("timer", f"Timer {fmt_min(secs / 60) if secs >= 60 else str(secs) + 's'}", r=label[:24], ms=1300)
+                ends = "ends " + self.t12(dt.datetime.now() + dt.timedelta(seconds=secs)) if secs >= 300 else ""
+                return self.hud("timer", f"Timer {fmt_min(secs / 60) if secs >= 60 else str(secs) + 's'}",
+                                r=" · ".join(x for x in (label[:14] if ends else label[:24], ends) if x), ms=2000 if ends else 1300)
             if low in ("sw", "stopwatch"):
                 sw = [x for x in self.timers if x.get("sw")]
                 if sw:
@@ -6816,6 +6838,7 @@ class Host(QWidget):
                     + " (" + ", ".join(f"{k} {v}" for k, v in sorted(getattr(self, "_js_fn", {}).items(), key=lambda kv: -kv[1])[:6]) + ")")
             self._js_n = 0
             self._js_fn = {}
+            threading.Thread(target=ram_top, daemon=True).start()     # who else is using the RAM (one log line)
             probe = ("JSON.stringify({heap: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1,"
                      " nodes: document.getElementsByTagName('*').length, imgs: document.images.length,"
                      " canv: document.getElementsByTagName('canvas').length, anims: document.getAnimations().length,"
