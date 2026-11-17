@@ -137,7 +137,8 @@ If the user wants it lighter still (Settings, gear tab):
 
 ## 5. Show the user how to use it
 The "4 things" card on the Today tab covers the basics; tap "Got it" and it's gone. Simple mode is in
-Settings › Island (off = every tab and setting).
+Settings › Island (off = every tab and setting). Settings is one page with the everyday stuff; the **Dev mode**
+switch at its bottom shows every setting (in groups, with search) and the System tab.
 - Hover the pill = quick peek · click = Today panel · right-click = menu · scroll = volume · drag to a side edge = side island.
 - Hotkeys: Win+Alt+I panel · Win+Alt+Space command bar · Win+Alt+W +250 ml water · Win+Alt+P music player ·
   Win+Alt+T timer · Win+Alt+M mic mute · Win+Alt+H private mode · Win+Alt+D desktop widgets.

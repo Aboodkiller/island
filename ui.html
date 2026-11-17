@@ -700,6 +700,19 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .bigset span{font-size:11px}
 .bigset:hover{background:rgba(255,255,255,.1)}
 .cdc{cursor:pointer}
+.qgrid{grid-template-columns:1fr 1fr!important;margin-top:10px}
+.qcyc .qv{font-size:11.5px;font-weight:750;color:var(--acc);white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.qcyc:not(.on) .qv{color:var(--dim)}
+.qfoot{display:flex;align-items:center;gap:8px;margin-top:12px}
+.qfoot .btn{display:inline-flex!important;flex-direction:row!important;align-items:center;height:34px;padding:0 14px;gap:7px;white-space:nowrap}
+.qfoot .btn svg{display:block;flex:none}
+.qdev{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 6px 0 12px;border-radius:17px;background:var(--card);font-size:12.5px;font-weight:700;color:var(--mut);cursor:pointer;white-space:nowrap}
+.qdev:hover{color:var(--fg)}
+.qdev.on{color:var(--fg);background:color-mix(in srgb,var(--acc) 14%,var(--card))}
+.qdev .sw{position:relative;display:inline-block;width:30px;height:18px;border-radius:9px;background:var(--card2);transition:background .2s}
+.qdev .sw i{position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .25s var(--spring)}
+.qdev .sw.on{background:var(--acc)}
+.qdev .sw.on i{transform:translateX(12px)}
 .welc{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:18px;margin:2px 0 10px;
   background:linear-gradient(150deg,rgba(167,139,250,.18),var(--card,#14161c) 70%);border:1px solid rgba(167,139,250,.3)}
 .wlt{font-size:14.5px}
@@ -2038,10 +2051,9 @@ const GEAR = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke
 const BELL = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>`;
 const TABS = [["Today","Today"],["Study","Study"],["Body","Body"],["System","System"],["Alerts",BELL],["Settings",GEAR]];
 function simpleOn() { return !!(S.settings && S.settings.values && S.settings.values.simple); }
-function tabsNow() {              // simple mode: only tabs that have something in them, no System tab
-  if (!simpleOn()) return TABS;
-  const d = S.data || {};
-  return TABS.filter(([t]) => t === "System" ? false : t === "Study" ? !!d.study : t === "Body" ? !!d.body : true);
+function tabsNow() {              // System only in dev mode; simple mode also hides empty tabs
+  const dev = !!(S.settings && S.settings.values && S.settings.values.dev), d = S.data || {};
+  return TABS.filter(([t]) => t === "System" ? dev : !simpleOn() ? true : t === "Study" ? !!d.study : t === "Body" ? !!d.body : true);
 }
 const ago = m => m < 60 ? m + "m" : m < 2880 ? Math.round(m / 60) + "h" : Math.round(m / 1440) + "d";
 const $ = id => document.getElementById(id);
@@ -3595,7 +3607,8 @@ const SET_TI = {squig: "wave", pet: "isl", split: "timer", icons: "spark", digit
   restart: "redo", folder: "folder", log: "log", test_sounds: "play2", test_confetti: "cake", sound_folder: "folder"};
 const THEME_SW = {default: ["#0a0b0f", "#a78bfa"], berserk: ["#060404", "#e11d2e"], qawi: ["#040c0b", "#5eead4"], album: ["#101218", "var(--tint)"]};
 function setTile(it, v) {
-  return `<div class="stile ${v ? "on" : ""}" data-a="set" data-v="${esc(it.k)}" data-x="${v ? "false" : "true"}" title="${esc(it.d || "")}">${SET_TI[it.k] ? hico(SET_TI[it.k], 17) : ""}<span>${esc(it.t)}</span><i></i></div>`;
+  const ic = SET_TI[it.k] || (typeof QUICK_I !== "undefined" && QUICK_I[it.k]);
+  return `<div class="stile ${v ? "on" : ""}" data-a="set" data-v="${esc(it.k)}" data-x="${v ? "false" : "true"}" title="${esc(it.d || "")}">${ic ? hico(ic, 17) : ""}<span>${esc(it.t)}</span><i></i></div>`;
 }
 function setRow(it, v) {
   let ctl = "";
@@ -3653,19 +3666,35 @@ function setGroupHTML(g, V) {
   if (btns.length) h += `<div class="setb" style="margin-top:10px">${btns.map(it => `<div class="btn" data-a="do" data-v="${esc(it.k)}">${SET_TI[it.k] ? hico(SET_TI[it.k], 14) : ""}${esc(it.t)}</div>`).join("")}</div>`;
   return h;
 }
-const SET_BASICS = ["simple", "theme", "scale", "desk", "player", "lyrics", "sounds", "quiet", "prayer", "bedtime", "auto_update", "update_now", "restart"];
+/* r35: settings for everyone = ONE page (no tabs, no scrolling). Dev mode shows every setting + the System tab */
+const QUICK_T = ["desk", "prayer", "brief", "autohide", "compact"];            // on/off tiles (left column)
+const QUICK_C = ["lyrics", "player", "quiet", "sounds", "bedtime"];            // tap to cycle (right column)
+const QUICK_I = {desk: "grid", prayer: "moon", brief: "sun", autohide: "isl", compact: "isl", lyrics: "music", player: "play2", quiet: "bell", sounds: "spk", bedtime: "moon"};
+function cycTile(it, v) {
+  const o = it.opts || [], i = Math.max(0, o.findIndex(x => String(x[0]) === String(v))), nx = o[(i + 1) % o.length] || o[0];
+  const cur = (o[i] || o[0] || [null, "?"])[1], off = String(v) === "off";
+  return `<div class="stile qcyc ${off ? "" : "on"}" data-a="set" data-v="${esc(it.k)}" data-x="${esc(JSON.stringify(nx ? nx[0] : v))}" title="Tap: ${esc(String(nx ? nx[1] : ""))}">${hico(QUICK_I[it.k] || "bolt", 17)}<span>${esc(it.t)}</span><b class="qv">${esc(cur)}</b></div>`;
+}
+function quickSettings(st) {
+  const all = st.schema.flatMap(g => g.items), get = k => all.find(it => it.k === k), V = st.values;
+  const th = get("theme"), sc = get("scale"), T = QUICK_T.map(get).filter(Boolean), C = QUICK_C.map(get).filter(Boolean);
+  const tiles = []; for (let i = 0; i < Math.max(T.length, C.length); i++) { if (T[i]) tiles.push(setTile(T[i], V[T[i].k])); if (C[i]) tiles.push(cycTile(C[i], V[C[i].k])); }
+  const up = get("update_now");
+  return (th ? setGroupHTML({id: "q-th", t: "", items: [th]}, V) : "")
+    + `<div class="setg qgrid">${tiles.join("")}</div>`
+    + (sc ? `<div class="setc" style="margin-top:10px">${setRow(sc, V.scale)}</div>` : "")
+    + `<div class="qfoot"><div class="btn" data-a="do" data-v="restart">${hico("bolt", 14)}Restart</div>${up ? `<div class="btn" data-a="do" data-v="update_now">${hico("dl", 14)}Updates</div>` : ""}
+       <div class="sp"></div><span class="qdev" data-a="set" data-v="dev" data-x="true" title="Every setting, the System tab and the tools">${hico("chip", 15)}Dev mode<i class="sw"><i></i></i></span></div>`;
+}
 function paneSettings() {
   const st = S.settings;
   if (!st) return `<div class="wcard ds" style="padding:11px 13px">Loading settings…</div>`;
   const q = (S.setQ || "").trim().toLowerCase();
-  if (st.values.simple && !S.setAll && !q) {          // simple mode: a short list, everything else one tap away
-    const all = st.schema.flatMap(g => g.items), items = SET_BASICS.map(k => all.find(it => it.k === k)).filter(Boolean);
-    return `<div class="setq" data-keep="setq">${hico("search", 15)}<input id="setq" placeholder="Search settings" autocomplete="off" spellcheck="false"></div>`
-      + setGroupHTML({id: "basics", t: "Basics", items}, st.values) + `<div class="smore" data-a="set_all">All settings<span>⌄</span></div>`;
-  }
+  if (!st.values.dev && !q) return quickSettings(st);
   if (!S.setG) { try { S.setG = localStorage.getItem("isl_setg") || ""; } catch (e) {} }
   const gid = st.schema.some(x => x.id === S.setG) ? S.setG : st.schema[0].id;
-  let h = `<div class="setq" data-keep="setq">${hico("search", 15)}<input id="setq" placeholder="Search settings" autocomplete="off" spellcheck="false"></div>`;
+  let h = `<div class="row" style="gap:8px;margin:2px 0 10px"><div class="setq" data-keep="setq" style="flex:1;margin:0">${hico("search", 15)}<input id="setq" placeholder="Search every setting" autocomplete="off" spellcheck="false"></div>
+    <span class="qdev on" data-a="set" data-v="dev" data-x="false" title="Back to the simple page">${hico("chip", 15)}Dev<i class="sw on"><i></i></i></span></div>`;
   h += `<div class="setnav">${st.schema.map(x => `<span class="${!q && x.id === gid ? "on" : ""}" data-a="set_g" data-v="${esc(x.id)}" title="${esc(x.t)}">${hico((SET_G[x.id] || [])[1] || "bolt", 17)}<b>${esc((SET_G[x.id] || [])[0] || x.t)}</b></span>`).join("")}</div>`;
   const groups = q ? st.schema.map(x => Object.assign({}, x, {items: x.items.filter(it => (it.t + " " + (it.d || "") + " " + x.t + " " + ((SET_G[x.id] || [])[0] || "")).toLowerCase().includes(q))})).filter(x => x.items.length)
                    : st.schema.filter(x => x.id === gid);

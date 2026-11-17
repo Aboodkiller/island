@@ -122,6 +122,7 @@ SCHEMA = [
     dict(id="island", t="Island", items=[
         dict(k="auto_update", t="Update by itself", d="Checks GitHub every few hours. Only the island's code changes, never your plans or settings", type="bool", shared=True),
         dict(k="update_now", t="Check for updates", type="button", label="Check", shared=True),
+        dict(k="dev", t="Dev mode", d="Every setting, the System tab and the tools. Off = one simple page", type="bool"),
         dict(k="simple", t="Simple mode", d="Only the basics: fewer tabs, settings and pop-ups. Off = everything", type="bool"),
         dict(k="welcomed", t="Welcome card seen", type="bool", hidden=True),
         dict(k="compact", t="Compact island", type="bool", state=True),
@@ -138,7 +139,7 @@ SCHEMA = [
     ]),
 ]
 
-DEFAULTS = dict(simple=True, welcomed=False, auto_update=True, shape="notch", rim=True, pet=True, buddy="orb", desk=True, weather=False, split=True, devbat=True, squig=True, voice=False, voice_key="rctrl", wake=True, voice_model="base", brain="off", lan=False, deck_usb=False, checkin=False, mirror_whatsapp=True, mirror_phone=True, mirror_discord=False, mirror_outlook=False, quiet="off", wx_alerts=True, screen=True, prayer=True, adhkar=False, brief=True, recap=False, bedtime="00:00", stretch=False, block=False, guard=True, next_nudge=True, autohide=False, player="pill", follow=True, watchdog=True, live_reload=True, update_toast=True, ram_trim=True, backups=True,
+DEFAULTS = dict(dev=False, simple=True, welcomed=False, auto_update=True, shape="notch", rim=True, pet=True, buddy="orb", desk=True, weather=False, split=True, devbat=True, squig=True, voice=False, voice_key="rctrl", wake=True, voice_model="base", brain="off", lan=False, deck_usb=False, checkin=False, mirror_whatsapp=True, mirror_phone=True, mirror_discord=False, mirror_outlook=False, quiet="off", wx_alerts=True, screen=True, prayer=True, adhkar=False, brief=True, recap=False, bedtime="00:00", stretch=False, block=False, guard=True, next_nudge=True, autohide=False, player="pill", follow=True, watchdog=True, live_reload=True, update_toast=True, ram_trim=True, backups=True,
                 theme="default", pillstyle="clean", font="geist", scale=1.0, motion="springy", icons=True, digits=True, glow=True,
                 accent=True, bump=True, breathe=False, heatmap=True, glass=False,
                 viz=True, lyrics="pill", artbg=True, sounds="soft", sound_vol=0.65, confetti=True,
