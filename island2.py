@@ -2437,6 +2437,10 @@ class Host(QWidget):
             st = getattr(self, "sp_state", None)
             if st:
                 self.js("spstate", {k2: v for k2, v in st.items() if k2 != "at"})
+            sp, m = getattr(self, "sp_pos", None), self.media.last or {}
+            if sp and m.get("title") and time.time() - sp[2] < 30:         # r44: Spotify's exact clock right away, not
+                p0, playing, at = sp                                         # the Windows one (it can be seconds off)
+                pw.js("spos", json.dumps([round(p0 + (time.time() - at if playing else 0), 2), playing, m.get("title")]))
             if getattr(self, "_away_js", None):
                 self.js("away", True)
             pw.js("pwdock", json.dumps(pw.dock))
@@ -2899,6 +2903,9 @@ class Host(QWidget):
             self.js("compact", bool(self.state.get("compact")))
             if self._lyr:
                 self.js("lyrics", self._lyr)
+            sp, mm = getattr(self, "sp_pos", None), self.media.last or {}
+            if sp and mm.get("title") and time.time() - sp[2] < 30:       # r44: a reloaded page starts on Spotify's exact clock
+                self.js("spos", [round(sp[0] + (time.time() - sp[2] if sp[1] else 0), 2), sp[1], mm.get("title")])
             self.push_timers()
             self.load_launch()
             if WIN and not getattr(self, "_probed", False):
