@@ -429,6 +429,12 @@ body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;anima
 .varm{transform:rotate(0deg);transition:transform 1s cubic-bezier(.3,.75,.25,1)}
 .vwrap.spin .varm{transform:rotate(20deg)}
 .music .mtop .mx.on{color:var(--glowc,#1ed760)}
+/* the song name never hides: it wraps to two lines and gets a bit smaller when the player is small (r33) */
+.mtt{font-size:16px;line-height:1.2;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.music.narrow .mtt{font-size:14px}
+.music.narrow .mtop{gap:9px;padding:14px 12px 4px}
+.music.narrow .mtop .art{width:40px!important;height:40px!important}
+.music.narrow .eq{display:none}
 .mbot{padding:4px 20px 18px}
 .mbot .ctl{margin-top:12px}
 .mbot .ctl span.mxa,.mbot .ctl span.mxb{width:auto;height:auto;background:none;transform:none;display:contents}
@@ -2147,6 +2153,7 @@ function mApplySize() {               // live, while dragging: no mode change, n
   vinylFit();
 }
 function vinylFit() {                 // the record grows/shrinks with the player
+  const mu = document.querySelector("#L-music .music"); if (mu) mu.classList.toggle("narrow", size("music")[0] < 470);
   const b = document.querySelector("#L-music .mbig"), v = b && b.querySelector(".vwrap"); if (!v) return;
   v.style.zoom = Math.max(.4, Math.min(2.2, Math.min((b.clientWidth - 20) / 300, (b.clientHeight - 10) / 262))).toFixed(3);
 }
@@ -2181,10 +2188,15 @@ document.addEventListener("pointerup", e => {
 }, true);
 function applyShift() {               // r32: slide the island toward a screen corner, never out of its window
   if (DECK || DASH || DESKW) return;
-  const [dx, dy] = S.sxy || [0, 0], [w, h] = size(S.mode);
+  const [dx, dy, lo0, hi0] = S.sxy || [0, 0], [w, h] = size(S.mode);
+  // keep the island inside the window AND off the taskbar (lo..hi = the free span python sent, CSS px)
+  const fit = (want, len, full) => {
+    const lo = Math.max(6, (lo0 == null ? 0 : lo0) + 6), hi = Math.min(full - 6, (hi0 == null ? full : hi0) - 6);
+    const min = lo + len / 2 - full / 2, max = hi - len / 2 - full / 2;
+    return min > max ? (min + max) / 2 : Math.max(min, Math.min(max, want));
+  };
   let sx = 0, sy = 0;
-  if (S.dock === "top") { const m = Math.max(0, (innerWidth - w) / 2 - 6); sx = Math.max(-m, Math.min(m, dx)); }
-  else { const m = Math.max(0, (innerHeight - h) / 2 - 6); sy = Math.max(-m, Math.min(m, dy)); }
+  if (S.dock === "top") sx = fit(dx, w, innerWidth); else sy = fit(dy, h, innerHeight);
   if (S.sxNow && S.sxNow[0] === sx && S.sxNow[1] === sy) return;
   S.sxNow = [sx, sy];
   document.body.style.translate = `${sx.toFixed(0)}px ${sy.toFixed(0)}px`;
@@ -4034,7 +4046,7 @@ function renderMusic() {
     <div class="bgart${pbC(art)}" style="${pbS(art)}"></div><div class="mshade"></div>
     <i class="mrz ${S.dock === "right" ? "l" : ""}" data-a="mrz" title="Drag to resize · double-click = default size"></i>
     <div class="mtop"><div class="art" data-a="music_small" title="Smaller player" style="width:52px;height:52px;cursor:pointer;${art}"></div>
-      <div class="col" style="flex:1;gap:2px;min-width:0"><span class="t ell" style="font-size:16px">${esc(m.title)}</span><span class="mut ell" style="font-size:12.5px">${esc(m.artist || "")}${appChip(m)}</span></div>
+      <div class="col" style="flex:1;gap:2px;min-width:0"><span class="t mtt" title="${esc(m.title)}">${esc(m.title)}</span><span class="mut ell" style="font-size:12.5px">${esc(m.artist || "")}${appChip(m)}</span></div>
       <span class="mxs">${xBtn("like", 18)}</span><div class="eq"><i></i><i></i><i></i><i></i></div><span class="mx ${V ? "on" : ""}" data-a="mstyle" title="${V ? "Show lyrics" : "Vinyl mode"}">${V ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" stroke-linecap="round" opacity=".6"/></svg>`}</span><span class="mx" data-a="music_small" title="Smaller player"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></span><span class="mx" data-a="music_close" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
     ${V ? `<div class="mbig"><div class="vwrap ${m.playing ? "spin" : ""}"><div class="vglow"></div>
         <div class="vrec" style="animation-delay:-${(vang / 360 * 1.8).toFixed(3)}s"><div class="vlab" style="${art}"></div><i class="vhole"></i></div>

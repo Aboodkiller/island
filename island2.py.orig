@@ -1909,8 +1909,27 @@ class Host(QWidget):
         x = g.left() if dock == "left" else g.right() + 1 - w
         return QRect(x, int(y), w, h)
 
+    def push_shift(self, geom=None, dock=None, anchor=None):
+        """Corners (r32): the window can't leave the screen, so near a screen edge the island slides inside its window
+        toward the spot you dropped it on. Sent as CSS px; the page keeps the island fully inside the window."""
+        try:
+            geom = geom or self.geometry()
+            dock = dock or self.dock
+            a = anchor if anchor is not None else self.state.get("anchor")
+            z = max(.5, getattr(self, "zoom", 1.0))
+            if a is None:
+                d = [0, 0]
+            elif dock == "top":
+                d = [round((a - (geom.x() + geom.width() / 2)) / z), 0]
+            else:
+                d = [0, round((a - (geom.y() + geom.height() / 2)) / z)]
+            self.js("shift", d)
+        except Exception as e:
+            print("shift:", e)
+
     def place(self):
         self.setGeometry(self.target_geom())
+        self.push_shift()
         if not self.ready:   # until the UI reports its real size, assume the collapsed pill
             w, h = (580, 46) if self.dock == "top" else (66, 292)
             w, h = int(w * self.zoom), int(h * self.zoom)
@@ -2877,7 +2896,9 @@ class Host(QWidget):
         scr = QGuiApplication.screenAt(pos) or self.screen()
         g = scr.geometry()
         zone = max(140, int(g.width() * 0.12))
-        if pos.x() - g.left() < zone:
+        if pos.y() - g.top() < max(110, int(g.height() * 0.12)):     # along the top, corners included: stays on top
+            dock, a = "top", pos.x()
+        elif pos.x() - g.left() < zone:
             dock, a = "left", pos.y()
         elif g.right() - pos.x() < zone:
             dock, a = "right", pos.y()
@@ -2894,6 +2915,7 @@ class Host(QWidget):
         dock_changed = True
         self.js("drag", False)
         self.js("dock", dock)
+        self.push_shift(end, dock, a)
         anim = QVariantAnimation(self)
         anim.setStartValue(start)
         anim.setEndValue(end)
@@ -3001,6 +3023,7 @@ class Host(QWidget):
             f.stop()
         self.setWindowOpacity(0.0)
         self.setGeometry(self.target_geom(scr=scr, anchor=a))
+        self.push_shift(anchor=a)
         self.click_through = None
         f = QVariantAnimation(self)
         f.setStartValue(0.0)

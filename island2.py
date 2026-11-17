@@ -1917,12 +1917,13 @@ class Host(QWidget):
             dock = dock or self.dock
             a = anchor if anchor is not None else self.state.get("anchor")
             z = max(.5, getattr(self, "zoom", 1.0))
-            if a is None:
-                d = [0, 0]
-            elif dock == "top":
-                d = [round((a - (geom.x() + geom.width() / 2)) / z), 0]
+            av = (self.screen() if geom is None else (QGuiApplication.screenAt(geom.center()) or self.screen())).availableGeometry()
+            if dock == "top":         # + the free span inside the window (taskbar excluded), in CSS px
+                d = [0 if a is None else round((a - (geom.x() + geom.width() / 2)) / z), 0,
+                     round((av.left() - geom.x()) / z), round((av.right() + 1 - geom.x()) / z)]
             else:
-                d = [0, round((a - (geom.y() + geom.height() / 2)) / z)]
+                d = [0, 0 if a is None else round((a - (geom.y() + geom.height() / 2)) / z),
+                     round((av.top() - geom.y()) / z), round((av.bottom() + 1 - geom.y()) / z)]
             self.js("shift", d)
         except Exception as e:
             print("shift:", e)
@@ -2896,14 +2897,17 @@ class Host(QWidget):
         scr = QGuiApplication.screenAt(pos) or self.screen()
         g = scr.geometry()
         zone = max(140, int(g.width() * 0.12))
+        r = getattr(self, "rect", None)
+        cx = self.x() + (r.center().x() if r is not None else self.width() // 2)
+        cy = self.y() + (r.center().y() if r is not None else self.height() // 2)
         if pos.y() - g.top() < max(110, int(g.height() * 0.12)):     # along the top, corners included: stays on top
-            dock, a = "top", pos.x()
+            dock, a = "top", cx
         elif pos.x() - g.left() < zone:
-            dock, a = "left", pos.y()
+            dock, a = "left", cy
         elif g.right() - pos.x() < zone:
-            dock, a = "right", pos.y()
+            dock, a = "right", cy
         else:
-            dock, a = "top", pos.x()
+            dock, a = "top", cx
         self.state.update(dock=dock, anchor=a, screen=scr.name(), screen_xy=[scr.geometry().left(), scr.geometry().top()])
         self.save_state()
         if getattr(self, "drag_from", None) is not None and self.skey(scr) != self.drag_from:
