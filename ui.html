@@ -466,6 +466,20 @@ body.popw.pwr #isl{left:auto!important;right:14px!important}
 body.popw #isl.dragging{transform:scale(1.025)!important;transition:transform .16s ease-out,box-shadow .2s!important;
   box-shadow:0 10px 18px rgba(0,0,0,.6),0 0 0 1.5px rgba(255,255,255,.14),0 0 20px -4px var(--glow)}
 body.popw #isl.rzing{transition:none!important}
+/* r50: tucked into its edge - the card slides out through the screen edge, a glowing tab stays (cover colour, pulses
+   with the music); hover the tab or the edge and it slides back */
+#pwtab{display:none}
+body.popw #pwtab{display:block;position:fixed;top:50%;left:6px;width:8px;height:96px;margin-top:-48px;pointer-events:none;
+  opacity:0;transform:translateX(-12px);transition:opacity .25s,transform .45s cubic-bezier(.25,1.45,.45,1)}
+body.popw.pwr #pwtab{left:auto;right:6px;transform:translateX(12px)}
+#pwtab i{position:absolute;inset:0;border-radius:5px;background:linear-gradient(180deg,color-mix(in srgb,var(--glowc,#1ed760) 55%,#fff),var(--glowc,#1ed760));
+  box-shadow:0 0 14px color-mix(in srgb,var(--glowc,#1ed760) 80%,transparent),0 0 3px rgba(255,255,255,.5);
+  transform:scaleY(calc(.82 + var(--lv,0) * .3));transition:transform .12s ease-out}
+body.popw.ptuck #pwtab{opacity:1;transform:none;transition:opacity .3s .18s,transform .5s .12s cubic-bezier(.25,1.45,.45,1)}
+body.popw.ptuck #isl{transform:translateX(calc(-100% - 24px))!important;opacity:.0;
+  transition:transform .42s cubic-bezier(.55,0,.75,.2),opacity .25s .17s!important}
+body.popw.ptuck.pwr #isl{transform:translateX(calc(100% + 24px))!important}
+body.popw.ptuck .vrec,body.popw.ptuck .vaura,body.popw.ptuck .vaura *{animation-play-state:paused!important}
 body.popw .ear,body.popw #bub,body.popw #neck,body.popw #stk,body.popw #halo{display:none!important}
 body.popw .layer{transition:none}
 body.popw .music .mtop{cursor:grab}
@@ -2069,7 +2083,7 @@ const DECK_HTTP = DECK && /^https?:$/.test(location.protocol);
 const DASH = location.hash === "#dash" || DECK || DESKW;
 const POPW = location.hash === "#player";          // r41: the music player popped out of the island into its own window
 const PWM = 14;                                    // its margin for the shadow
-const POP_SEND = new Set(["ready", "pw_drag", "pw_resize", "pw_rz", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
+const POP_SEND = new Set(["ready", "pw_drag", "pw_resize", "pw_rz", "pw_pin", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
   "media_shuffle", "media_repeat", "media_like", "media_src"]);
 const DASH_SEND = new Set(["ready", "toggle", "ex", "water", "launch", "dash_close", "media_toggle", "media_next", "media_prev",
   "media_seek", "media_shuffle", "media_repeat", "media_like", "media_src"]);
@@ -4276,6 +4290,7 @@ function popIdle() {
 }
 function popInit() {
   document.body.className = "dock-top popw";
+  if (!$("pwtab")) { const t = document.createElement("div"); t.id = "pwtab"; t.innerHTML = "<i></i>"; document.body.appendChild(t); }
   S.dock = "top"; S.mview = S.lastMview = "full"; S.stay = true;
   setMode("music"); renderMusic();
   addEventListener("resize", () => {
@@ -4315,6 +4330,7 @@ function closeMusic() { S.stay = false; S.musicHover = false; clearTimeout(S.mus
 function glowSync() {                // r40: the new song's colour reaches a player that didn't need rebuilding
   const el = $("L-music").firstElementChild, c = S.glowc || "#1ed760";
   if (el && el.style.getPropertyValue("--glowc") !== c) el.style.setProperty("--glowc", c);
+  if (POPW) document.body.style.setProperty("--glowc", c);           // the tucked tab glows in the cover's colour
 }
 function renderMusic() {
   const m = S.media;
@@ -4335,7 +4351,7 @@ function renderMusic() {
     <i class="mrz ${(POPW ? S.pwDock : S.dock) === "right" ? "l" : ""}" data-a="mrz" title="Drag to resize · double-click = default size"></i>
     <div class="mtop"><div class="art" ${POPW ? "" : `data-a="music_small" title="Smaller player"`} style="width:52px;height:52px;${POPW ? "" : "cursor:pointer;"}${art}"></div>
       <div class="col" style="flex:1;gap:2px;min-width:0"><span class="t mtt" title="${esc(m.title)}">${esc(m.title)}</span><span class="mut ell" style="font-size:12.5px">${esc(m.artist || "")}${appChip(m)}</span></div>
-      <span class="mxs">${xBtn("like", 18)}</span><div class="eq"><i></i><i></i><i></i><i></i></div><span class="mx ${V ? "on" : ""}" data-a="mstyle" title="${V ? "Show lyrics" : "Vinyl mode"}">${V ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" stroke-linecap="round" opacity=".6"/></svg>`}</span>${POPW ? `<span class="mx" data-a="pw_in" title="Back into the island"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14H4v6M4 20l7-7"/><rect x="11" y="3" width="10" height="8" rx="2"/></svg></span>` : `<span class="mx" data-a="music_pop" title="Pop out: its own window, anywhere"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></span><span class="mx" data-a="music_small" title="Smaller player"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></span>`}<span class="mx" data-a="${POPW ? "pw_close" : "music_close"}" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
+      <span class="mxs">${xBtn("like", 18)}</span><div class="eq"><i></i><i></i><i></i><i></i></div><span class="mx ${V ? "on" : ""}" data-a="mstyle" title="${V ? "Show lyrics" : "Vinyl mode"}">${V ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h11M4 18h14"/></svg>` : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5a6.5 6.5 0 0 1 6.5 6.5" stroke-linecap="round" opacity=".6"/></svg>`}</span>${POPW ? `<span class="mx ${S.pwPin ? "on" : ""}" data-a="pw_pin" title="${S.pwPin ? "Stays out: tap to let it tuck into the edge" : "Tucks into the edge when you move away: tap to keep it out"}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></svg></span><span class="mx" data-a="pw_in" title="Back into the island"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14H4v6M4 20l7-7"/><rect x="11" y="3" width="10" height="8" rx="2"/></svg></span>` : `<span class="mx" data-a="music_pop" title="Pop out: its own window, anywhere"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></span><span class="mx" data-a="music_small" title="Smaller player"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg></span>`}<span class="mx" data-a="${POPW ? "pw_close" : "music_close"}" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
     ${V ? `<div class="mbig"><div class="vwrap ${m.playing ? "spin" : ""}"><div class="vglow"></div><div class="vaura"><i class="vsw"></i><i class="vwv"></i><i class="vwv"></i><i class="vwv"></i><i class="vemb">${VEMB}</i></div><div class="vbase"></div>
         <div class="vrec" style="animation-delay:-${(vang / 360 * 1.8).toFixed(3)}s"><div class="vlab" style="${art}"></div></div>
         <div class="vshine"></div><i class="vhole"></i><svg class="vtone" viewBox="0 0 300 262" width="300" height="262"><defs><linearGradient id="vtm" x1="0" x2="1"><stop offset="0" stop-color="#eef1f6"/><stop offset=".5" stop-color="#aab1bd"/><stop offset="1" stop-color="#6c7380"/></linearGradient><radialGradient id="vtb" cx=".4" cy=".35"><stop offset="0" stop-color="#4a4f5a"/><stop offset="1" stop-color="#16181d"/></radialGradient></defs><circle cx="282" cy="22" r="19" fill="url(#vtb)" stroke="rgba(255,255,255,.12)"/><g class="varm" style="transform-origin:282px 22px"><rect x="275" y="-6" width="14" height="16" rx="4" fill="#3a3e47" stroke="rgba(255,255,255,.15)"/><path d="M282 22 L282 150 Q282 186 266 206" fill="none" stroke="url(#vtm)" stroke-width="5" stroke-linecap="round"/><g transform="rotate(28 266 210)"><rect x="257" y="200" width="18" height="24" rx="3.5" fill="#2b2f37" stroke="url(#vtm)" stroke-width="1.6"/><rect x="261" y="214" width="10" height="8" rx="1.5" fill="#d9a441"/><path d="M264.5 222 L266 229 L267.5 222Z" fill="#f4f4f5"/></g><circle cx="282" cy="22" r="7" fill="url(#vtm)"/></g></svg></div></div>`
@@ -4752,6 +4768,7 @@ window.island = {
       }
     }
     if (S.mode === "music") { const vw = document.querySelector("#L-music .vwrap"); if (vw) vw.style.setProperty("--lv", L.toFixed(3)); }   // the vinyl aura pumps
+    if (POPW) document.body.style.setProperty("--lv", L.toFixed(3));                                                                    // and the tucked tab
     document.querySelectorAll(".layer.on .playing .eq").forEach(eq => {
       const is = eq.children;
       for (let k = 0; k < is.length; k++) { const w = .5 + .5 * Math.abs(Math.sin(t * (2.3 + k * 1.37) + k * 1.9)); is[k].style.transform = `scaleY(${(Math.max(3, 3 + 10 * L * w) / 13).toFixed(3)})`; }
@@ -4958,6 +4975,8 @@ window.island = {
   },
   toast(t) { S.toast = t; renderToast(); setMode("toast"); bump(); },
   toastDone(ret) { S.toast = null; if ((ret || "pill") === "pill" && S.stay && S.media) { S.musicKey = null; setMode("music"); renderMusic(); return; } setMode(ret || "pill"); renderAll(); },
+  pwtuck(on) { if (!POPW) return; document.body.classList.toggle("ptuck", !!on); },     // r50: into the edge / back out
+  pwpin(on) { if (!POPW) return; S.pwPin = !!on; S.musicKey = null; renderMusic(); },
   pwdock(d) { if (POPW && d !== S.pwDock) { S.pwDock = d; document.body.classList.toggle("pwr", d === "right"); S.musicKey = null; renderMusic(); } },     // r42: the grip goes to the corner away from its edge
   popped(v) {                        // r41: "out" = the window shows it now · "in" = back into the island · "closed"
     S.popped = v === "out"; S.popWait = false;
@@ -5386,7 +5405,7 @@ isl.addEventListener("click", e => {
     send("mview", S.mview); setMode("music"); renderMusic(); return; }
   if (name === "music_close") { closeMusic(); return; }
   if (name === "music_pop") { popOut(); return; }
-  if (name === "pw_in" || name === "pw_close") { send(name); return; }
+  if (name === "pw_in" || name === "pw_close" || name === "pw_pin") { send(name); return; }
   if (name === "mrz") return;
   if (name === "music_vinyl" && S.popped) { send("pw_front"); return; }
   if (name === "music_vinyl") { S.mstyle = "vinyl"; try { localStorage.setItem("isl_mstyle", "vinyl"); } catch (e) {} clearTimeout(S.musicOutT); S.musicKey = null; S.musicHover = false; S.stay = true;

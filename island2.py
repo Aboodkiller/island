@@ -31,7 +31,7 @@ import time
 import urllib.request
 
 from PySide6.QtCore import QFileSystemWatcher, QProcess, Qt, QTimer, QUrl, QObject, Slot, Signal, QPoint, QRect, QVariantAnimation, QEasingCurve, QFile, QIODevice
-from PySide6.QtCore import QEvent, QMimeData, QPointF
+from PySide6.QtCore import QEvent, QMimeData, QPointF, QAbstractAnimation
 from PySide6.QtGui import QDrag, QMouseEvent
 from PySide6.QtGui import QGuiApplication, QCursor, QColor, QAction
 from PySide6.QtWidgets import QApplication, QWidget, QMenu, QVBoxLayout, QSystemTrayIcon
@@ -1632,6 +1632,11 @@ class PopWin(QWidget):
         self.setAttribute(Qt.WA_ShowWithoutActivating)      # r49: like the island, clicking it never takes the focus
         self.setWindowTitle("Island player")
         self.press_at, self.dragging, self.grab, self.rz = None, False, QPoint(), None
+        # r50: tucks into its edge when the mouse is away (a glowing tab stays); everything else stays clickable
+        self.tuck_on = bool((host.state.get("pop") or {}).get("tuck", True))
+        self.tucked, self.away_since, self.peek_until, self.ct = False, None, 0.0, None
+        self.hov_t = QTimer(self)
+        self.hov_t.timeout.connect(self.hover_tick)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         self.view = QWebEngineView(self)
@@ -1699,6 +1704,65 @@ class PopWin(QWidget):
             return bool(user32.GetAsyncKeyState(0x01) & 0x8000)
         return bool(QGuiApplication.mouseButtons() & Qt.LeftButton)
 
+    def card_rect(self):
+        m = int(self.M * self.host.zoom)
+        return self.geometry().adjusted(m, m, -m, -m)
+
+    def tab_rect(self):
+        """The glowing tab left on the screen edge while it's tucked (the page draws it at the same spot)."""
+        z, c = self.host.zoom, self.card_rect()
+        g = (QGuiApplication.screenAt(c.center()) or self.screen()).availableGeometry()
+        tw, th = int(8 * z), int(96 * z)
+        x = g.left() if self.dock != "right" else g.right() + 1 - tw
+        return QRect(x, c.center().y() - th // 2, tw, th)
+
+    def busy(self):
+        return (self.dragging or self.rz is not None or self.press_at is not None
+                or (self.anim is not None and self.anim.state() == QAbstractAnimation.Running))
+
+    def hover_tick(self):
+        """~60 Hz near it, ~10 Hz far: tuck / untuck, and click-through everywhere but the card (or the tab)."""
+        try:
+            if not self.ready or self.fs_hidden or not self.isVisible():
+                return
+            pos, now = QCursor.pos(), time.time()
+            c, busy, down = self.card_rect(), self.busy(), self._btn_down()
+            if self.tucked:
+                t = self.tab_rect()
+                g = (QGuiApplication.screenAt(c.center()) or self.screen()).availableGeometry()
+                on_edge = (pos.x() <= g.left() + 2 if self.dock != "right" else pos.x() >= g.right() - 2) and c.top() <= pos.y() <= c.bottom()
+                if (t.adjusted(-16, -16, 16, 16).contains(pos) or on_edge) and not down:
+                    self.set_tuck(False)
+                want_ct = not t.adjusted(-4, -4, 4, 4).contains(pos)
+            else:
+                if c.adjusted(-8, -8, 8, 8).contains(pos) or busy or not self.tuck_on or now < self.peek_until or down:
+                    self.away_since = None
+                elif self.away_since is None:
+                    self.away_since = now
+                elif now - self.away_since > 1.4:
+                    self.set_tuck(True)
+                want_ct = not c.contains(pos) and not busy and not down
+            if want_ct != self.ct:
+                self.ct = want_ct
+                set_click_through(self, want_ct)
+            near = c.adjusted(-260, -260, 260, 260).contains(pos)
+            want_ms = 16 if near or busy else 100
+            if self.hov_t.interval() != want_ms:
+                self.hov_t.setInterval(want_ms)
+        except RuntimeError:
+            pass
+
+    def set_tuck(self, on):
+        if on == self.tucked:
+            return
+        self.tucked, self.away_since = on, None
+        self.js("pwtuck", json.dumps(on))
+
+    def peek(self, secs=3.5):
+        """A new song while it's tucked: slides out for a moment, like the island's live activity."""
+        self.peek_until = time.time() + secs
+        self.set_tuck(False)
+
     def no_activate(self):
         """WS_EX_NOACTIVATE: a click goes to the player without making it the active window (the game / app keeps focus)."""
         if not WIN:
@@ -1715,6 +1779,7 @@ class PopWin(QWidget):
         self._stop_anim()
         if not self._btn_down():
             return
+        self.set_tuck(False)
         self.press_at = QCursor.pos()
         self.grab = self.press_at - self.pos()
         self.dragging = False
@@ -1789,16 +1854,15 @@ class PopWin(QWidget):
             pos = pos or card.center()
             scr = QGuiApplication.screenAt(pos) or QGuiApplication.screenAt(card.center()) or self.screen()
             g = scr.availableGeometry()
-            if keep:
+            # r50: the side edges only (the top is the island's): anywhere along them, corners included
+            if keep and self.dock in ("left", "right"):
                 dock = self.dock
-            elif pos.y() - g.top() < max(110, int(g.height() * 0.12)):      # along the top, corners included
-                dock = "top"
             elif pos.x() - g.left() < max(140, int(g.width() * 0.12)):
                 dock = "left"
             elif g.right() - pos.x() < max(140, int(g.width() * 0.12)):
                 dock = "right"
-            else:                                                            # let go mid-screen: the nearest edge
-                dock = min((card.top() - g.top(), "top"), (card.left() - g.left(), "left"), (g.right() - card.right(), "right"))[1]
+            else:                                                            # let go mid-screen: the nearer side
+                dock = "left" if card.center().x() - g.left() < g.right() - card.center().x() else "right"
             cw, ch = card.width(), card.height()
             if dock == "top":
                 cx = max(g.left() + gap, min(card.left(), g.right() + 1 - gap - cw))
@@ -2450,7 +2514,7 @@ class Host(QWidget):
         x, y = max(g.left() - int(M * z), min(x, g.right() - w + int(M * z))), max(g.top() - int(M * z), min(y, g.bottom() - h + int(M * z)))
         self.popw = PopWin(self, (x, y, w, h), dock=(self.state.get("pop") or {}).get("dock", "top") if geo and not rect else "top")
         self.popw.snap(None, keep=bool(geo and not rect), animate=False)   # on an edge from the start, like the island
-        self.state["pop"] = dict(on=True, geo=[x, y, w, h], dock=self.popw.dock)
+        self.state["pop"] = dict(on=True, geo=[x, y, w, h], dock=self.popw.dock, tuck=self.popw.tuck_on)
         self.save_state()
         print(f"player: popped out at {x},{y} {w}x{h}")
 
@@ -2466,7 +2530,7 @@ class Host(QWidget):
         pw = getattr(self, "popw", None)
         if pw is not None:
             r = pw.geometry()
-            self.state["pop"] = dict(on=True, geo=[r.x(), r.y(), r.width(), r.height()], dock=pw.dock)
+            self.state["pop"] = dict(on=True, geo=[r.x(), r.y(), r.width(), r.height()], dock=pw.dock, tuck=pw.tuck_on)
             self.save_state()
 
     def pop_close(self, back_in=False):
@@ -2491,6 +2555,8 @@ class Host(QWidget):
         if name == "ready":
             pw.ready = True
             pw.no_activate()
+            pw.hov_t.start(60)
+            pw.js("pwpin", json.dumps(not pw.tuck_on))
             self.push_settings()
             if self.media.last:
                 self._art_sent = None
@@ -2516,6 +2582,14 @@ class Host(QWidget):
             pw.drag()
         elif name == "pw_resize":
             pw.resize_start()
+        elif name == "pw_pin":                        # r50: keep it out / let it tuck away
+            pw.tuck_on = not pw.tuck_on
+            self.state.setdefault("pop", {})["tuck"] = pw.tuck_on
+            self.save_state()
+            pw.js("pwpin", json.dumps(not pw.tuck_on))
+            if not pw.tuck_on:
+                pw.set_tuck(False)
+            self.hud("info", "Player stays out" if not pw.tuck_on else "Player tucks into the edge", ms=1400)
         elif name == "pw_rz":
             if arg and arg[0]:
                 pw.rz_start()
@@ -2648,6 +2722,12 @@ class Host(QWidget):
         """From the PC's media session; Spotify playing on his phone / another device (Spotify Connect) shows instead
         when nothing else really plays here."""
         self._win_media = m
+        pw = getattr(self, "popw", None)
+        nt = (m or {}).get("title")
+        if nt:                                   # a real new song (not a blip with no title) while tucked: peek out
+            if pw is not None and pw.ready and pw.tucked and getattr(self, "_pop_title", None) and nt != self._pop_title:
+                pw.peek()
+            self._pop_title = nt
         pop = self.state.get("pop") or {}
         if (pop.get("on") and pop.get("geo") and m and m.get("playing") and self.ready and getattr(self, "popw", None) is None
                 and not self.hidden_fs and not getattr(self, "_pop_restored", False)):
