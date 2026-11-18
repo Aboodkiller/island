@@ -468,6 +468,12 @@ body.popw #isl.dragging{transform:scale(1.025)!important;transition:transform .1
 body.popw #isl.rzing{transition:none!important}
 /* r50: tucked into its edge - the card slides out through the screen edge, a glowing tab stays (cover colour, pulses
    with the music); hover the tab or the edge and it slides back */
+/* r51: held over the island it shrinks a little (the island lights up to catch it); let go = it flies in */
+body.popw.pnear #isl{transform:scale(.88)!important;opacity:.9;transition:transform .32s cubic-bezier(.25,1.45,.45,1),opacity .2s!important}
+body.popw.pmerge #isl{transform:scale(.2)!important;opacity:0;transition:transform .26s cubic-bezier(.55,0,.85,.35),opacity .2s .06s!important}
+body.catching #isl{animation:catchp 1.1s ease-in-out infinite!important}
+@keyframes catchp{0%,100%{box-shadow:0 0 0 2px color-mix(in srgb,var(--catchc) 70%,#fff),0 0 26px 4px color-mix(in srgb,var(--catchc) 50%,transparent)}
+  50%{box-shadow:0 0 0 3px color-mix(in srgb,var(--catchc) 85%,#fff),0 0 44px 12px color-mix(in srgb,var(--catchc) 70%,transparent)}}
 #pwtab{display:none}
 body.popw #pwtab{display:block;position:fixed;top:50%;left:6px;width:8px;height:96px;margin-top:-48px;pointer-events:none;
   opacity:0;transform:translateX(-12px);transition:opacity .25s,transform .45s cubic-bezier(.25,1.45,.45,1)}
@@ -4975,6 +4981,13 @@ window.island = {
   },
   toast(t) { S.toast = t; renderToast(); setMode("toast"); bump(); },
   toastDone(ret) { S.toast = null; if ((ret || "pill") === "pill" && S.stay && S.media) { S.musicKey = null; setMode("music"); renderMusic(); return; } setMode(ret || "pill"); renderAll(); },
+  catch(on) {                        // r51: the popped-out player is held over the island: it opens up to take it back
+    if (POPW) return;
+    document.body.style.setProperty("--catchc", S.glowc || "#a78bfa");
+    document.body.classList.toggle("catching", !!on);
+  },
+  pwnear(on) { if (POPW) document.body.classList.toggle("pnear", !!on); },
+  pwmerge() { if (POPW) { document.body.classList.remove("pnear", "ptuck"); document.body.classList.add("pmerge"); } },
   pwtuck(on) { if (!POPW) return; document.body.classList.toggle("ptuck", !!on); },     // r50: into the edge / back out
   pwpin(on) { if (!POPW) return; S.pwPin = !!on; S.musicKey = null; renderMusic(); },
   pwdock(d) { if (POPW && d !== S.pwDock) { S.pwDock = d; document.body.classList.toggle("pwr", d === "right"); S.musicKey = null; renderMusic(); } },     // r42: the grip goes to the corner away from its edge
