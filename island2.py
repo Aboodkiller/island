@@ -2416,6 +2416,14 @@ class Host(QWidget):
         self.save_state()
         print(f"player: popped out at {x},{y} {w}x{h}")
 
+    def pop_home(self):
+        """r48: the player is out in its own window, so the island goes home: the top of the screen, dead centre."""
+        if getattr(self, "popw", None) is None or self.dragging:
+            return
+        if self.dock != "top" or self.state.get("anchor") is not None:
+            print(f"player: out -> island from {self.dock} back to the top centre")
+            self.set_dock("top")
+
     def pop_save(self):
         pw = getattr(self, "popw", None)
         if pw is not None:
@@ -2464,6 +2472,7 @@ class Host(QWidget):
                 pw.show()
                 pw.front()
             QTimer.singleShot(180, lambda: self.js("popped", "out"))    # now the island lets go of its player
+            QTimer.singleShot(650, self.pop_home)
         elif name == "pw_drag":
             pw.drag()
         elif name == "pw_resize":
