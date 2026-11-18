@@ -458,7 +458,14 @@ body.away .vaura,body.away .vaura *{animation-play-state:paused!important}
 /* r41: the popped-out player: the island's own big player filling its window, a margin left for the shadow */
 body.popw{background:transparent!important}
 body.popw #isl{top:14px!important;left:14px!important;right:auto!important;transform:none!important;
-  box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04),0 0 18px -6px var(--glow)}
+  box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04),0 0 18px -6px var(--glow);
+  transition:transform .5s cubic-bezier(.25,1.45,.45,1),box-shadow .3s!important}
+/* r49: pinned to its right edge (the window grows to the left while you resize it) */
+body.popw.pwr #isl{left:auto!important;right:14px!important}
+/* held like the island: it lifts a little; let go and it settles with a bounce */
+body.popw #isl.dragging{transform:scale(1.025)!important;transition:transform .16s ease-out,box-shadow .2s!important;
+  box-shadow:0 10px 18px rgba(0,0,0,.6),0 0 0 1.5px rgba(255,255,255,.14),0 0 20px -4px var(--glow)}
+body.popw #isl.rzing{transition:none!important}
 body.popw .ear,body.popw #bub,body.popw #neck,body.popw #stk,body.popw #halo{display:none!important}
 body.popw .layer{transition:none}
 body.popw .music .mtop{cursor:grab}
@@ -2062,7 +2069,7 @@ const DECK_HTTP = DECK && /^https?:$/.test(location.protocol);
 const DASH = location.hash === "#dash" || DECK || DESKW;
 const POPW = location.hash === "#player";          // r41: the music player popped out of the island into its own window
 const PWM = 14;                                    // its margin for the shadow
-const POP_SEND = new Set(["ready", "pw_drag", "pw_resize", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
+const POP_SEND = new Set(["ready", "pw_drag", "pw_resize", "pw_rz", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
   "media_shuffle", "media_repeat", "media_like", "media_src"]);
 const DASH_SEND = new Set(["ready", "toggle", "ex", "water", "launch", "dash_close", "media_toggle", "media_next", "media_prev",
   "media_seek", "media_shuffle", "media_repeat", "media_like", "media_src"]);
@@ -2211,7 +2218,7 @@ function miniSize(side) {
 }
 function size(mode) {
   if (mode === "dash") return [window.innerWidth, window.innerHeight, 0];
-  if (POPW) return [Math.max(200, innerWidth - 2 * PWM), Math.max(200, innerHeight - 2 * PWM), 26];
+  if (POPW) return S.pwBox ? [S.pwBox.w, S.pwBox.h, 26] : [Math.max(200, innerWidth - 2 * PWM), Math.max(200, innerHeight - 2 * PWM), 26];
   const side = S.dock !== "top";
   const vh = window.innerHeight;
   if (mode === "shelf") { const n = Math.max(1, Math.min(6, (S.shelf || []).length)); return [side ? 360 : 460, 62 + n * 50, 26]; }
@@ -4271,12 +4278,37 @@ function popInit() {
   document.body.className = "dock-top popw";
   S.dock = "top"; S.mview = S.lastMview = "full"; S.stay = true;
   setMode("music"); renderMusic();
-  addEventListener("resize", () => { setMode("music"); vinylFit(); });
+  addEventListener("resize", () => {
+    // the window fits the card again after a resize: back to filling it
+    if (S.pwBox && !S.prz && Math.abs(innerWidth - 2 * PWM - S.pwBox.w) < 3 && Math.abs(innerHeight - 2 * PWM - S.pwBox.h) < 3) S.pwBox = null;
+    setMode("music"); vinylFit();
+  });
   document.addEventListener("pointerdown", e => {       // drag it by anything that isn't a button; the corner grip resizes it
     if (e.button !== 0) return;
-    if (e.target.closest(".mrz")) { e.preventDefault(); e.stopImmediatePropagation(); send("pw_resize"); return; }
+    const g = e.target.closest(".mrz");
+    if (g) {                                            // r49: resized in the page, smooth like the island's big player
+      e.preventDefault(); e.stopImmediatePropagation();
+      const [w, h] = size("music");
+      S.pwBox = {w, h}; S.prz = {x: e.screenX, y: e.screenY, w, h, right: S.pwDock === "right", id: e.pointerId};
+      try { g.setPointerCapture(e.pointerId); } catch (err) {}
+      isl.classList.add("rzing"); send("pw_rz", [1]);
+      return;
+    }
     if (e.target.closest("[data-a],[data-seek],.ctl,.bar,input")) return;
     send("pw_drag");
+  }, true);
+  document.addEventListener("pointermove", e => {
+    const z = S.prz; if (!z) return;
+    const dx = e.screenX - z.x, dy = e.screenY - z.y;
+    S.pwBox = {w: Math.round(Math.max(300, Math.min(innerWidth - 2 * PWM, z.w + (z.right ? -dx : dx)))),
+               h: Math.round(Math.max(330, Math.min(innerHeight - 2 * PWM, z.h + dy)))};
+    setMode("music"); vinylFit();
+  }, true);
+  document.addEventListener("pointerup", e => {
+    if (!S.prz) return;
+    S.prz = null; isl.classList.remove("rzing");
+    send("pw_rz", [0, S.pwBox.w, S.pwBox.h]);
+    S.musicKey = null; renderMusic();
   }, true);
 }
 function closeMusic() { S.stay = false; S.musicHover = false; clearTimeout(S.musicOutT); setMode("pill"); renderPill(); }
@@ -4926,7 +4958,7 @@ window.island = {
   },
   toast(t) { S.toast = t; renderToast(); setMode("toast"); bump(); },
   toastDone(ret) { S.toast = null; if ((ret || "pill") === "pill" && S.stay && S.media) { S.musicKey = null; setMode("music"); renderMusic(); return; } setMode(ret || "pill"); renderAll(); },
-  pwdock(d) { if (POPW && d !== S.pwDock) { S.pwDock = d; S.musicKey = null; renderMusic(); } },     // r42: the grip goes to the corner away from its edge
+  pwdock(d) { if (POPW && d !== S.pwDock) { S.pwDock = d; document.body.classList.toggle("pwr", d === "right"); S.musicKey = null; renderMusic(); } },     // r42: the grip goes to the corner away from its edge
   popped(v) {                        // r41: "out" = the window shows it now · "in" = back into the island · "closed"
     S.popped = v === "out"; S.popWait = false;
     if (v === "out") { S.stay = false; if (S.mode === "music") { setMode("pill"); renderPill(); } }

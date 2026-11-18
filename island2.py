@@ -1629,7 +1629,9 @@ class PopWin(QWidget):
         self.dock, self.anchor, self.anim, self.watch_t = dock, anchor, None, None
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)      # r49: like the island, clicking it never takes the focus
         self.setWindowTitle("Island player")
+        self.press_at, self.dragging, self.grab, self.rz = None, False, QPoint(), None
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         self.view = QWebEngineView(self)
@@ -1697,51 +1699,85 @@ class PopWin(QWidget):
             return bool(user32.GetAsyncKeyState(0x01) & 0x8000)
         return bool(QGuiApplication.mouseButtons() & Qt.LeftButton)
 
-    def drag(self):
-        """Windows moves it (smooth); if that can't start, follow the mouse ourselves. Let go: it sticks to an edge."""
-        self._stop_anim()
-        w = self.windowHandle()
+    def no_activate(self):
+        """WS_EX_NOACTIVATE: a click goes to the player without making it the active window (the game / app keeps focus)."""
+        if not WIN:
+            return
         try:
-            if w is not None and w.startSystemMove():
-                self._watch(False)
-                return
+            hwnd = int(self.winId())
+            SetWindowLong(hwnd, -20, GetWindowLong(hwnd, -20) | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW)
         except Exception as e:
-            print("player move:", e)
-        self._follow("move")
+            print("player no-activate:", e)
+
+    def drag(self):
+        """r49: moved like the island - it follows the mouse once you've moved 7 px (a click stays a click), it lifts
+        while held, and glides onto an edge when you let go. No Windows move loop."""
+        self._stop_anim()
+        if not self._btn_down():
+            return
+        self.press_at = QCursor.pos()
+        self.grab = self.press_at - self.pos()
+        self.dragging = False
+        if self.drag_t is not None:
+            self.drag_t.stop()
+            self.drag_t.deleteLater()
+        self.drag_t = QTimer(self)
+
+        def step():
+            pos = QCursor.pos()
+            if not self._btn_down():
+                self.drag_t.stop()
+                if self.dragging:
+                    self.dragging = False
+                    self.js("drag", "false")
+                    self.snap(pos)
+                self.press_at = None
+                return
+            if not self.dragging and (pos - self.press_at).manhattanLength() > 7:
+                self.dragging = True
+                self.js("drag", "true")
+            if self.dragging:
+                self.move(pos - self.grab)
+        self.drag_t.timeout.connect(step)
+        self.drag_t.start(8)
 
     def resize_start(self):
-        """From the corner away from its edge (stuck on the right = the bottom-left corner)."""
+        self.drag()                           # old pages asked Windows to resize; the corner grip now does it in the page
+
+    def rz_start(self):
+        """r49: the corner grip resizes the card inside the page (smooth, like the island's big player). The window grows
+        once, here, keeping the corner the card is pinned to (top-left, or top-right on the right edge); it shrinks
+        back once when you let go (rz_end). No window resize per frame = no flicker."""
         self._stop_anim()
-        w = self.windowHandle()
-        edges = Qt.Edge.BottomEdge | (Qt.Edge.LeftEdge if self.dock == "right" else Qt.Edge.RightEdge)
-        try:
-            if w is not None and w.startSystemResize(edges):
-                self._watch(True)
-                return
-        except Exception as e:
-            print("player resize:", e)
-        self._follow("size")
+        z, M = self.host.zoom, self.M * self.host.zoom
+        r = self.geometry()
+        g = (QGuiApplication.screenAt(r.center()) or self.screen()).availableGeometry()
+        wmax, hmax = int((900 + 2 * self.M) * z), int((1100 + 2 * self.M) * z)
+        if self.dock == "right":
+            right = r.right()
+            w = min(wmax, right - g.left() + int(M))
+            self.rz = ("right", right, r.top())
+            self.setGeometry(right - w + 1, r.top(), w, min(hmax, max(r.height(), g.bottom() + int(M) - r.top())))
+        else:
+            self.rz = ("left", r.left(), r.top())
+            self.setGeometry(r.left(), r.top(), min(wmax, max(r.width(), g.right() + int(M) - r.left())),
+                             min(hmax, max(r.height(), g.bottom() + int(M) - r.top())))
+
+    def rz_end(self, cw, ch):
+        """The card's final size (page px): the window fits it again, same pinned corner, then it re-sticks to its edge."""
+        z, M = self.host.zoom, self.M
+        w, h = int((float(cw) + 2 * M) * z), int((float(ch) + 2 * M) * z)
+        w, h = max(self.minimumWidth(), w), max(self.minimumHeight(), h)
+        side, x, y = self.rz or ("left", self.x(), self.y())
+        self.rz = None
+        self.setGeometry(x - w + 1 if side == "right" else x, y, w, h)
+        self.save_t.start(500)
+        QTimer.singleShot(60, lambda: self.snap(None, keep=True))
 
     def _stop_anim(self):
         if self.anim is not None:
             self.anim.stop()
             self.anim = None
-
-    def _watch(self, keep):
-        """Windows runs the move/resize itself: poll for the button coming up, then snap."""
-        if self.watch_t is not None:
-            self.watch_t.stop()
-            self.watch_t.deleteLater()
-        self.watch_t = QTimer(self)
-        t0 = time.time()
-
-        def tick():
-            if self._btn_down() and time.time() - t0 < 30:
-                return
-            self.watch_t.stop()
-            self.snap(QCursor.pos(), keep=keep)
-        self.watch_t.timeout.connect(tick)
-        self.watch_t.start(30)
 
     def snap(self, pos=None, keep=False, animate=True):
         """Stick to the top, left or right edge, anywhere along it (corners too) - the island's own rules.
@@ -1782,8 +1818,10 @@ class PopWin(QWidget):
                 anim = QVariantAnimation(self)
                 anim.setStartValue(r)
                 anim.setEndValue(end)
-                anim.setDuration(380)
-                anim.setEasingCurve(QEasingCurve.OutCubic)
+                anim.setDuration(460)
+                ec = QEasingCurve(QEasingCurve.OutBack)      # r49: lands with a little bounce, like the island
+                ec.setOvershoot(0.9)
+                anim.setEasingCurve(ec)
                 anim.valueChanged.connect(lambda v: self.setGeometry(v))
                 anim.start()
                 self.anim = anim
@@ -2452,6 +2490,7 @@ class Host(QWidget):
             return
         if name == "ready":
             pw.ready = True
+            pw.no_activate()
             self.push_settings()
             if self.media.last:
                 self._art_sent = None
@@ -2477,6 +2516,11 @@ class Host(QWidget):
             pw.drag()
         elif name == "pw_resize":
             pw.resize_start()
+        elif name == "pw_rz":
+            if arg and arg[0]:
+                pw.rz_start()
+            elif arg:
+                pw.rz_end(arg[1], arg[2])
         elif name == "pw_in":
             self.pop_close(True)
         elif name == "pw_close":
