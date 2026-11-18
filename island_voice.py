@@ -100,6 +100,8 @@ def _dur(text):
     s = re.search(r"(\d+)\s*(?:seconds?|secs?|s|ثانية|ثواني)\b", t)
     if h and m:
         return f"{h.group(1)}h{int(m.group(1)):02d}"
+    if m and s:                             # '1 minute 30 seconds' used to become a 1-minute timer
+        return f"{m.group(1)}m{s.group(1)}s"
     if h:
         return f"{h.group(1)}h"
     if m:
@@ -128,6 +130,9 @@ def natural(text):
         return ""
     # timers
     if re.search(r"\b(timer|countdown|remind me in|alarm in)\b|مؤقت|تايمر|منبه", t):
+        at = re.search(r"\b(?:until|till|til|to|at)\s+(\d{1,2}(?::\d{2})?(?:\s*[ap]m)?)\b", t)
+        if at and not re.search(r"\b(minutes?|mins?|hours?|hrs?|seconds?|secs?)\b", t):
+            return "timer until " + at.group(1)     # 'timer to 16:30' used to start a 16-minute timer
         d = _dur(t)
         lab = re.search(r"\b(?:for|called|named)\s+([a-z][a-z ]{1,24})$", t)
         label = lab.group(1) if lab and not re.search(r"\d|minute|hour|second", lab.group(1)) else ""

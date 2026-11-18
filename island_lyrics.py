@@ -68,6 +68,11 @@ class Lyrics:
         artist, title, album, dur = self.song(media)
         if media.get("app") == "Browser" and not artist:
             return           # a web page / video ("Instagram • Messages", "Watch Supernatural"), not a song
+        if len(re.findall(r"(?:^|\s)#\w", media.get("title") or "")) >= 2:
+            return           # a social clip ("The Hulk Chases Black Widow - Avengers 2012 #hulk #avengers #mcu"): not a song
+        if not artist and (re.match(r"\(\d+\)\s", title) or " • " in title
+                           or re.search(r"\b(Instagram|Messages|WhatsApp|Facebook|TikTok)\b", title)):
+            return           # a web app's page title, no artist ("(5) Instagram" from Edge's Instagram app): not a song
         key = f"{artist}|{title}".lower()
         with self.lock:
             if key == self.key:

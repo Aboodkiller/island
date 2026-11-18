@@ -136,8 +136,28 @@ if WIN:
             return None
         m = mi.rcMonitor
         if r.left <= m.left and r.top <= m.top and r.right >= m.right and r.bottom >= m.bottom:
-            return int(mon)
+            return None if snip_overlay(hwnd) else int(mon)
         return None
+
+    SNIP_EXES = ("snippingtool.exe", "screenclippinghost.exe", "screensketch.exe")
+    _snip_c = [None, False]
+
+    def snip_overlay(hwnd):
+        """Snipping Tool's capture overlay (Win+Shift+S) covers the screen for a second or two: not a fullscreen app.
+        Before (nightly 18 Nov): every screenshot hid the island, closed + rebuilt the desktop widgets and restarted the
+        battery reader. One window = one process, so the answer is kept for the last window asked about."""
+        h = int(hwnd or 0)
+        if _snip_c[0] == h:
+            return _snip_c[1]
+        try:
+            import psutil
+            pid = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            v = psutil.Process(pid.value).name().lower() in SNIP_EXES
+        except Exception:
+            return False
+        _snip_c[0], _snip_c[1] = h, v
+        return v
 
     def monitor_of(hwnd):
         return int(user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST))
@@ -3004,6 +3024,8 @@ class Host(QWidget):
                 if items[arg]["done"] and str(arg).startswith("H:") and self.inbox.logged(rid):
                     self.inbox.submit(dict(type="undo", target=rid), f"untick|{arg}|{day.isoformat()}")
                 m.toggle(items[arg], day)
+                if not items[arg]["done"]:
+                    self.drop_item_timer(arg)
             self.push_data()
         elif name == "say":
             self.say_word("ex" if arg == "ex" else "word")
@@ -3704,6 +3726,83 @@ class Host(QWidget):
         self.notify(key, t["cat"], kicker, t["title"] + (f"  ·  {fmt_min(t['dur'])}" if t["src"] == "S" else ""),
                     h12_text(t.get("desc", "")), acts, timeout, item=ik)
 
+    # ---------------------------------------------------------- start -> done (r47)
+    @staticmethod
+    def two_step(t):
+        """A plan item with a length (a study session, the gym, a meal): asked "start?" when it begins and "done?" when
+        its time is up. Vitamins and quick ones keep the one "Done" reminder."""
+        return t.get("cat") != "V" and int(t.get("dur") or 0) >= 10 and not t.get("block")
+
+    def item_timer(self, ik):
+        return next((x for x in self.timers if x.get("item") == ik), None)
+
+    def drop_item_timer(self, ik):
+        if self.item_timer(ik):
+            self.timers = [x for x in self.timers if x.get("item") != ik]
+            self.push_timers()
+
+    def start_item(self, t, day, mins=None):
+        """Start: its own countdown on the island (the session's length); when it ends the island asks if it's done."""
+        ik = t["key"]
+        self.drop_item_timer(ik)
+        mins = int(mins or t.get("dur") or 30)
+        self.timers.append(dict(id=f"i{int(time.time() * 1000)}", end=time.time() + mins * 60, total=mins * 60,
+                                label=t["title"], item=ik, day=day.isoformat()))
+        self.push_timers()
+        self.state.setdefault("started", {})[ik] = [day.isoformat(), time.time()]
+        self.state["started"] = {k: v for k, v in self.state["started"].items() if v and v[0] >= (day - core.DAY).isoformat()}
+        self.save_state()
+        self.hud("timer", t["title"], r=fmt_min(mins), ms=2200)
+        print(f"plan: started {t['title']} ({mins} min)")
+
+    def start_toast(self, key, t, kicker, timeout=60, snoozed=False):
+        """It's time: "Maths — start?"  Start ▶ / Snooze 10m / Skip."""
+        m = self.model
+        day = m.today()
+        ik = t["key"]
+        snz = self.__dict__.setdefault("_snz", {})
+        if not snoozed:
+            snz.pop(ik, None)
+        if not self.one_per_item(ik):
+            return
+
+        def snooze():
+            tok = time.time()
+            snz[ik] = tok
+
+            def again():
+                if snz.get(ik) != tok:
+                    return
+                snz.pop(ik, None)
+                if m.today() != day or self.item_timer(ik):
+                    return
+                cur = next((x for x in m.items(day) if x["key"] == ik), t)
+                if not m.is_done_now(cur, day):
+                    self.start_toast(f"{day.isoformat()}-ssnz-{ik}-{int(tok)}", cur, self.snooze_kicker(cur, day), timeout, snoozed=True)
+            QTimer.singleShot(10 * 60_000, again)
+        body = " · ".join(x for x in (h12_text(t.get("desc", "")), fmt_min(t["dur"]) if t.get("dur") else "") if x)
+        self.notify(key, t["cat"], kicker, f"{t['title']} — start?", body,
+                    [("Start ▶", lambda: self.start_item(t, day)), ("Snooze 10m", snooze), ("Skip", None)], timeout, item=ik)
+
+    def done_toast(self, key, t, kicker, timeout=120):
+        """Its time is up: "Maths — done?"  Done ✓ / +15 min / Not done."""
+        m = self.model
+        day = m.today()
+        ik = t["key"]
+        if not self.one_per_item(ik):
+            return
+
+        def done():
+            self.drop_item_timer(ik)
+            if not m.is_done_now(t, day):
+                m.toggle(t, day)
+            self.push_data()
+
+        acts = [("Done ✓", done), ("+15 min", lambda: self.start_item(t, day, 15)), ("Not done", None)]
+        if t.get("cat") == "ME" and self.meal_qawi(t["key"], day) and self.inbox.ready():
+            acts = [("Log + tick", lambda: (self.drop_item_timer(ik), self.log_meal(t["key"]))), ("Done ✓", done), ("+15 min", acts[1][1])]
+        self.notify(key, t["cat"], kicker, f"{t['title']} — done?", h12_text(t.get("desc", "")), acts, timeout, item=ik)
+
     def water_toast(self, key, per, left, snoozed=False):
         m = self.model
         day = m.today()
@@ -3774,11 +3873,25 @@ class Host(QWidget):
                 continue
             if t["optional"]:
                 continue
+            two = self.two_step(t)
+            cn = CAT_NAME.get(t["cat"], "")
             if t["cat"] != "V" and early and due(s - dt.timedelta(minutes=early), f"{iso}-early-{t['key']}"):
-                self.item_toast(f"{iso}-early-{t['key']}", t,
-                                f"{CAT_NAME.get(t['cat'], '')} · in {early} min · {h12(t['time'])}", 30)
+                if two:                         # r47: a heads-up only; "start?" comes at its time
+                    self.notify(f"{iso}-early-{t['key']}", t["cat"], f"{cn} · in {early} min · {h12(t['time'])}", t["title"],
+                                h12_text(t.get("desc", "")), [("OK", None)], 30, item=t["key"])
+                else:
+                    self.item_toast(f"{iso}-early-{t['key']}", t, f"{cn} · in {early} min · {h12(t['time'])}", 30)
             if due(s, f"{iso}-now-{t['key']}"):
-                self.item_toast(f"{iso}-now-{t['key']}", t, f"{CAT_NAME.get(t['cat'], '')} · starts now", 60)
+                if two:
+                    if not self.item_timer(t["key"]):
+                        self.start_toast(f"{iso}-now-{t['key']}", t, f"{cn} · now · {h12(t['time'])}", 60)
+                else:
+                    self.item_toast(f"{iso}-now-{t['key']}", t, f"{cn} · starts now", 60)
+            if two:                             # never pressed Start: still asks when its planned time is over
+                st = (self.state.get("started") or {}).get(t["key"])
+                _, e = m.span(t, today)
+                if e and not (st and st[0] == iso) and not self.item_timer(t["key"]) and due(e, f"{iso}-end-{t['key']}"):
+                    self.done_toast(f"{iso}-end-{t['key']}", t, f"{cn} · time's up")
 
         cfg = m.health.water_cfg if m.health.ok else {}
         goal = m.health.goal_ml(today) if m.health.ok else 0
@@ -6200,6 +6313,10 @@ class Host(QWidget):
     def parse_dur(s):
         """'25' '25m' '1h30' '1h 30m' '90s' '2:30' (+ optional label) -> (seconds, label)"""
         s = s.strip().lower()
+        m = re.match(r"^(?:(\d+)\s*h(?:ours?|rs?)?\s*)?(\d+)\s*m(?:in(?:ute)?s?)?\s*(\d+)\s*s(?:ec(?:ond)?s?)?\b\s*(.*)$", s)
+        if m:          # '1m30s' / '2 min 30 sec' / '1h 2m 30s' (used to fail, or start 1 min labelled '30 s')
+            secs = int(m.group(1) or 0) * 3600 + int(m.group(2)) * 60 + int(m.group(3))
+            return (secs, m.group(4).strip()) if secs > 0 else (None, s)
         m = re.match(r"^(\d+):(\d{1,2})\b\s*(.*)$", s)
         if m:
             return int(m.group(1)) * 60 + int(m.group(2)), m.group(3)
@@ -6261,11 +6378,22 @@ class Host(QWidget):
             m = re.match(r"^(?:t|timer)\s+(.+)$", low)
             if m:
                 secs, label = self.parse_dur(m.group(1))
+                mu = re.match(r"^(?:until|till|til|to|at)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b\s*(.*)$", m.group(1))
+                if mu and int(mu.group(1)) <= 23 and int(mu.group(2) or 0) <= 59 and (not mu.group(3) or 1 <= int(mu.group(1)) <= 12):
+                    # 'timer until 4:30 pm' / 'timer to 16:30' / 'timer at 5 tea': runs out at that clock time
+                    hh, mi, ap, now = int(mu.group(1)), int(mu.group(2) or 0), mu.group(3), dt.datetime.now()
+                    if ap:
+                        hh = hh % 12 + (12 if ap == "pm" else 0)
+                    tgt = now.replace(hour=hh % 24, minute=mi, second=0, microsecond=0)
+                    step = dt.timedelta(hours=12 if (not ap and 1 <= hh <= 12) else 24)   # '4:30' alone = the next 4:30
+                    while tgt <= now:
+                        tgt += step
+                    secs, label = int((tgt - now).total_seconds()), mu.group(4)
                 if not secs:
                     return self.hud("info", "Timer: try 25, 90s, 1h30", ms=1800)
                 self.add_timer(secs, t[len(t) - len(label):] if label else "")
                 ends = "ends " + self.t12(dt.datetime.now() + dt.timedelta(seconds=secs)) if secs >= 300 else ""
-                return self.hud("timer", f"Timer {fmt_min(secs / 60) if secs >= 60 else str(secs) + 's'}",
+                return self.hud("timer", f"Timer {f'{secs // 60}m {secs % 60:02d}s' if 60 < secs < 3600 and secs % 60 else fmt_min(secs / 60) if secs >= 60 else str(secs) + 's'}",
                                 r=" · ".join(x for x in (label[:14] if ends else label[:24], ends) if x), ms=2000 if ends else 1300)
             if low in ("sw", "stopwatch"):
                 sw = [x for x in self.timers if x.get("sw")]
@@ -6872,6 +7000,11 @@ class Host(QWidget):
             self.timers = [t for t in self.timers if t not in done]
             self.push_timers()
             for t in done:
+                if t.get("item"):                    # r47: a started plan item: ask if it's done
+                    it = next((x for x in self.model.items(self.model.today()) if x["key"] == t["item"]), None)
+                    if it and not it["done"]:
+                        self.done_toast(f"idone-{t['id']}", it, f"{CAT_NAME.get(it['cat'], '')} · time's up")
+                    continue
                 if t.get("mock"):
                     cat = t["mock"]
                     self.notify(f"mock-{t['id']}", cat, "mock · time's up", t["label"],

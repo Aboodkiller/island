@@ -713,7 +713,11 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .sti{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:12px;font-size:11.5px;font-weight:700;cursor:pointer;
   color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
 .sti > i{display:grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--c);color:#0b0c10}
-.sti.done{opacity:.55;text-decoration:line-through}
+.sti{transition:filter .15s,transform .12s}
+.sti:hover{filter:brightness(1.18)}
+.sti:active{transform:scale(.95)}
+.sti.done{color:var(--mut);background:rgba(255,255,255,.05)}
+.sti.done > span{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.3)}
 .sti.done > i{background:var(--c)}
 .sti.now{box-shadow:0 0 0 1.5px var(--c) inset}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
@@ -763,7 +767,8 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .ot.ar{direction:rtl;text-align:right}
 .oin{font-size:11.5px;font-weight:700;color:var(--mut);white-space:nowrap}
 .olate{font-size:11px;font-weight:750;color:var(--warn)}
-.orow.done .ot,.orow.done .otm{color:var(--dim);text-decoration:line-through}
+.orow.done .ot{color:var(--dim);text-decoration:line-through}
+.orow.done .otm{color:var(--dim)}
 .ock{width:22px;height:22px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c) 60%,transparent);display:grid;place-items:center;flex:none;cursor:pointer;color:#0b0c10;transition:background .15s,transform .12s}
 .ock:hover{background:color-mix(in srgb,var(--c) 18%,transparent)}
 .ock:active{transform:scale(.85)}
@@ -3404,7 +3409,7 @@ function oneHero(it, kick, sub, btns) {
 }
 function oneRow(t) {
   const c = CAT[t.cat] || "#94a3b8", tick = !t.block && S.data.view.editable;
-  return `<div class="orow ${t.done ? "done" : ""}" style="--c:${c}"><span class="otm">${T(t.time || "", true)}</span><i class="odot"></i>
+  return `<div class="orow ${t.done ? "done" : ""}" style="--c:${c}"><span class="otm">${T(t.time || "")}</span><i class="odot"></i>
     <span class="ot ell ${AR.test(t.title || "") ? "ar" : ""}">${esc(t.title)}</span>${t.state === "late" && !t.block && !t.done ? `<span class="olate">missed</span>` : t.until != null && t.until <= 90 && !t.done ? `<span class="oin">in ${fmt(t.until)}</span>` : ""}
     ${tick ? `<span class="ock ${t.done ? "on" : ""}" data-a="toggle" data-v="${esc(t.key)}" title="${t.done ? "Undo" : "Done"}">${t.done ? hico("ok", 12) : ""}</span>` : ""}</div>`;
 }
