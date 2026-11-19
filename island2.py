@@ -115,6 +115,9 @@ if WIN:
     def left_button_down():
         return bool(user32.GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 
+    def right_button_down():
+        return bool(user32.GetAsyncKeyState(0x02) & 0x8000)
+
     def fullscreen_monitor(own_hwnds):
         """Monitor handle that has a fullscreen foreground app on it, or None."""
         hwnd = user32.GetForegroundWindow()
@@ -259,6 +262,9 @@ if WIN:
 else:
     def left_button_down():
         return bool(QGuiApplication.mouseButtons() & Qt.LeftButton)
+
+    def right_button_down():
+        return bool(QGuiApplication.mouseButtons() & Qt.RightButton)
 
     def fullscreen_monitor(own):
         return None
@@ -1627,6 +1633,7 @@ class PopWin(QWidget):
         super().__init__(None)
         self.host, self.ready, self.tries, self.fs_hidden = host, False, 0, False
         self.warm, self.trail, self.near = warm, [], False     # r51: warm = loaded in the background, not shown yet
+        self.drag_btn, self._cv_t = 1, 0.0                       # r53: torn off with the right button = held by it
         self.dock, self.anchor, self.anim, self.watch_t = dock, anchor, None, None
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -1703,8 +1710,8 @@ class PopWin(QWidget):
 
     def _btn_down(self):
         if WIN:
-            return bool(user32.GetAsyncKeyState(0x01) & 0x8000)
-        return bool(QGuiApplication.mouseButtons() & Qt.LeftButton)
+            return bool(user32.GetAsyncKeyState(0x02 if self.drag_btn == 2 else 0x01) & 0x8000)
+        return bool(QGuiApplication.mouseButtons() & (Qt.RightButton if self.drag_btn == 2 else Qt.LeftButton))
 
     def card_rect(self):
         m = int(self.M * self.host.zoom)
@@ -1775,13 +1782,15 @@ class PopWin(QWidget):
         except Exception as e:
             print("player no-activate:", e)
 
-    def drag(self, grab=None, immediate=False):
+    def drag(self, grab=None, immediate=False, btn=1):
         """r49: moved like the island - it follows the mouse once you've moved 7 px (a click stays a click), it lifts
         while held, and glides onto an edge when you let go. No Windows move loop.
         r51: thrown (or dropped) onto the island it goes back in; flung sideways it flies to that side.
         grab/immediate: torn off the island, already held."""
         self._stop_anim()
+        self.drag_btn = btn
         if not self._btn_down():
+            self.drag_btn = 1
             return
         self.set_tuck(False)
         self.press_at = QCursor.pos()
@@ -1800,14 +1809,16 @@ class PopWin(QWidget):
             self.trail = [p for p in self.trail if now - p[0] < 0.12] + [(now, pos)]
             if not self._btn_down():
                 self.drag_t.stop()
+                self.drag_btn = 1
                 if self.dragging:
                     self.dragging = False
                     self.js("drag", "false")
-                    self.set_near(False)
                     aim = self.fling(pos)
                     if self.host.pop_catches(pos) or self.host.pop_catches(aim):
-                        self.merge()
+                        self.catch_vec(pos, force=True)
+                        self.merge()                      # the island keeps reaching for it until it's in
                     else:
+                        self.set_near(False)
                         self.snap(aim)
                 self.press_at = None
                 return
@@ -1817,6 +1828,8 @@ class PopWin(QWidget):
             if self.dragging:
                 self.move(pos - self.grab)
                 self.set_near(self.host.pop_catches(pos))
+                if self.near:
+                    self.catch_vec(pos)
         self.drag_t.timeout.connect(step)
         self.drag_t.start(8)
 
@@ -1839,7 +1852,24 @@ class PopWin(QWidget):
             return
         self.near = on
         self.js("pwnear", json.dumps(on))
-        self.host.js("catch", on)
+        if on:
+            self.catch_vec(QCursor.pos(), force=True)
+        else:
+            self.host.js("catch", False)
+
+    def catch_vec(self, pos, force=False):
+        """r53: the island reaches out toward the player (like a bag opening for it): where it is, in page px."""
+        now = time.time()
+        if not force and now - self._cv_t < 0.033:
+            return
+        self._cv_t = now
+        h = self.host
+        try:
+            ic = h.mapToGlobal(h.rect.center())
+            z = h.zoom
+            h.js("catch", [True, round((pos.x() - ic.x()) / z), round((pos.y() - ic.y()) / z)])
+        except Exception:
+            pass
 
     def merge(self):
         """Back into the island: it shrinks and flies into it, then the island opens its own big player."""
@@ -2631,7 +2661,7 @@ class Host(QWidget):
         except Exception:
             return False
 
-    def tear_off(self, pos, page=None):
+    def tear_off(self, pos, page=None, btn=1):
         """r51: drag the island's player away from it -> it comes off in its own window, under your mouse, still held.
         r52: page = [grab x, grab y, w, h] (page px) from the page when the stretched player tears."""
         r = getattr(self, "rect", None)
@@ -2655,7 +2685,7 @@ class Host(QWidget):
         pw = self.pop_open(geo=(x, y, cw + 2 * M, ch + 2 * M), tear=True)
         if pw is None:
             return False
-        pw.drag(grab=pos - pw.pos(), immediate=True)
+        pw.drag(grab=pos - pw.pos(), immediate=True, btn=btn)
         pw.born = True                                    # r52: lands in your hand with a wobble
         if pw.ready:
             pw.js("pwborn", "")
@@ -3301,8 +3331,10 @@ class Host(QWidget):
         elif name == "press":
             self.press_at = QCursor.pos()
         elif name == "tear":                              # r52: the stretched player tore off the island
-            if getattr(self, "popw", None) is None and left_button_down():
-                if not self.tear_off(QCursor.pos(), page=arg):
+            btn = int(arg[4]) if arg and len(arg) > 4 else 1   # r53: pulled with the right button
+            held = right_button_down() if btn == 2 else left_button_down()
+            if getattr(self, "popw", None) is None and held:
+                if not self.tear_off(QCursor.pos(), page=arg, btn=btn):
                     self.js("popped", "in")
             elif getattr(self, "popw", None) is None:
                 self.js("popped", "in")                   # the button came up first: back in
@@ -3518,8 +3550,7 @@ class Host(QWidget):
             if not down:
                 self.press_at = None
             elif (pos - self.press_at).manhattanLength() > 7:
-                if not (self.mode == "music" and getattr(self, "popw", None) is None and self.tear_off(pos)):
-                    self.start_drag()
+                self.start_drag()
         if self.dragging:
             if down:
                 self.move(pos - self.grab)
@@ -3535,6 +3566,8 @@ class Host(QWidget):
         want = not inside and self.mode != "cmd"
         if want and down and self.prev_button and self.click_through is False:
             want = False      # a drag that started on the island (volume / song bar) keeps the mouse until release
+        if want and self.click_through is False and self.mode == "music" and right_button_down():
+            want = False      # r53: pulling the player out with the right button
         if want != self.click_through:
             self.click_through = want
             set_click_through(self, want)
