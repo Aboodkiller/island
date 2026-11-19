@@ -2028,6 +2028,7 @@ class Host(QWidget):
         super().__init__(None)
         self.model = core.Model()
         self.state = self.load_state()
+        self.popw = self.popw_warm = None          # the popped-out player window / its waiting copy
         if not self.state.get("home43"):          # r43: the player pops out now, so the island goes home: top, dead centre
             self.state.update(home43=True, dock="top", anchor=None)
         self.fired = set(self.state.get("fired", []))
@@ -2624,16 +2625,16 @@ class Host(QWidget):
         return self.popw
 
     def pop_warm_check(self):
-        """r51: while the big player is open in the island, a copy of the player page loads in the background so
-        tearing it off (or the pop-out button) is instant. Dropped 25 s after the player closes. Not on low-RAM PCs."""
-        want = self.mode == "music" and getattr(self, "popw", None) is None and not getattr(self, "low_ram", False)
-        if want and getattr(self, "popw_warm", None) is None:
-            QTimer.singleShot(700, self._pop_warm_make)
-        elif not want and getattr(self, "popw_warm", None) is not None:
-            QTimer.singleShot(25_000, self._pop_warm_drop)
+        """r51: a copy of the player page waits loaded in the background so tearing it off (or the pop-out button)
+        is instant. r54: kept for good (made ~8 s after start, a closed player goes back to waiting instead of being
+        destroyed: no lag on the first pull, and no web views torn down mid-flight). Not on low-RAM PCs."""
+        if getattr(self, "low_ram", False):
+            return
+        if getattr(self, "popw", None) is None and getattr(self, "popw_warm", None) is None:
+            QTimer.singleShot(300, self._pop_warm_make)
 
     def _pop_warm_make(self):
-        if self.mode != "music" or getattr(self, "popw", None) is not None or getattr(self, "popw_warm", None) is not None:
+        if getattr(self, "popw", None) is not None or getattr(self, "popw_warm", None) is not None or getattr(self, "low_ram", False):
             return
         pop = self.state.get("pop") or {}
         z, M = self.zoom, PopWin.M
@@ -2643,7 +2644,7 @@ class Host(QWidget):
 
     def _pop_warm_drop(self):
         ww = getattr(self, "popw_warm", None)
-        if ww is None or (self.mode == "music" and getattr(self, "popw", None) is None):
+        if ww is None or not getattr(self, "low_ram", False):
             return
         self.popw_warm = None
         ww.ready = False
@@ -2714,12 +2715,34 @@ class Host(QWidget):
         self.popw = None
         self.state["pop"]["on"] = False
         self.save_state()
-        pw.ready = False
-        pw.hide()
-        pw.close()
-        pw.deleteLater()
+        if not getattr(self, "low_ram", False) and getattr(self, "popw_warm", None) is None and pw.ready:
+            self.pop_recycle(pw)                      # r54: hidden and kept, ready for the next pull
+        else:
+            pw.ready = False
+            pw.hide()
+            pw.close()
+            pw.deleteLater()
         self.js("popped", "in" if back_in else "closed")
         print("player: back in the island" if back_in else "player: closed")
+
+    def pop_recycle(self, pw):
+        """Back to waiting in the background: hidden, every hold / tuck / animation state cleared."""
+        try:
+            pw._stop_anim()
+            for t in (pw.drag_t, pw.watch_t):
+                if t is not None:
+                    t.stop()
+            pw.hov_t.stop()
+            pw.hide()
+            pw.warm, pw.dragging, pw.press_at, pw.rz, pw.near = True, False, None, None, False
+            pw.tucked, pw.away_since, pw.peek_until, pw.drag_btn = False, None, 0.0, 1
+            if pw.ct:
+                set_click_through(pw, False)
+            pw.ct = None
+            pw.js("pwreset", "")
+            self.popw_warm = pw
+        except RuntimeError:
+            self.popw_warm = None
 
     def pop_feed(self, pw):
         """Everything a fresh player page needs."""
@@ -3229,6 +3252,9 @@ class Host(QWidget):
             self.js("dock", self.dock)
             if getattr(self, "popw", None) is not None and self.popw.ready:
                 self.js("popped", "out")
+            if not getattr(self, "_pop_warm_sched", False):
+                self._pop_warm_sched = True
+                QTimer.singleShot(8000, self.pop_warm_check)
             self.push_settings()
             self.push_data()
             if self.media.last:

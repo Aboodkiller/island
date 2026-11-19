@@ -4997,6 +4997,12 @@ window.island = {
     if (on && Array.isArray(v) && !pull) catchReach(+v[1] || 0, +v[2] || 0); else if (!on) catchRelax();
   },
   pwnear(on) { if (POPW) document.body.classList.toggle("pnear", !!on); },
+  pwreset() {                          // r54: back to waiting hidden for the next pull: clean slate
+    if (!POPW) return;
+    isl.getAnimations().forEach(a => a.cancel());
+    document.body.classList.remove("pmerge", "pnear", "ptuck");
+    S.drag = false; isl.classList.remove("dragging");
+  },
   pwborn() {                           // r52: just torn off: it wobbles like jelly in your hand
     if (!POPW) return;
     isl.animate([{scale: "1.07 .92"}, {scale: ".96 1.04"}, {scale: "1.02 .985"}, {scale: "1 1"}], {duration: 560, easing: "cubic-bezier(.3,1.3,.5,1)"});
@@ -5015,11 +5021,12 @@ window.island = {
     else if (v === "in") {
       const caught = S.reach;
       document.body.classList.remove("catching"); catchRelax(true);
-      if (caught) {                    // r53: swallowed: a gulp, a plop, then it opens up
+      S.pullUsed = Date.now();         // the right button that let it go is released over the island: no menu
+      if (caught) {                    // r53: swallowed: a gulp and a plop
         isl.animate([{scale: "1.16 .86"}, {scale: ".93 1.08"}, {scale: "1.03 .97"}, {scale: "1 1"}], {duration: 540, easing: "cubic-bezier(.3,1.2,.5,1)"});
         plopSound();
       }
-      if (S.media) openMusic("full");
+      if (S.media) showLive();         // r54: no big player: just what's playing, for a moment
     }
   },
   player(v) {
@@ -5422,7 +5429,7 @@ window.addEventListener("mouseup", e => {
 isl.addEventListener("contextmenu", e => {
   e.preventDefault();
   if (pull && !pull.on && !pull.broke) { pull.menuAt = [e.screenX, e.screenY]; return; }   // r53: right press on the player: pull or menu?
-  if (pull || (S.pullUsed && Date.now() - S.pullUsed < 1200)) { S.pullUsed = 0; return; }   // it was a pull: no menu
+  if (pull || S.reach || (S.pullUsed && Date.now() - S.pullUsed < 1200)) { S.pullUsed = 0; return; }   // it was a pull / a throw back: no menu
   if (S.mode === "imenu") { setMode("pill"); renderPill(); return; }   // right-click again = close the menu
   if (!DASH && e.target.closest(".lnch span[data-i], .lnch .ladd")) { S.ledit = !S.ledit; S.lpick = false; renderPanel(false); return; }
   send("menu", [e.screenX, e.screenY]);
