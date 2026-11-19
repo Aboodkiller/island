@@ -2631,14 +2631,19 @@ class Host(QWidget):
         except Exception:
             return False
 
-    def tear_off(self, pos):
-        """r51: drag the island's player away from it -> it comes off in its own window, under your mouse, still held."""
+    def tear_off(self, pos, page=None):
+        """r51: drag the island's player away from it -> it comes off in its own window, under your mouse, still held.
+        r52: page = [grab x, grab y, w, h] (page px) from the page when the stretched player tears."""
         r = getattr(self, "rect", None)
-        if r is None or self.press_at is None:
+        if r is None or (self.press_at is None and not page):
             return False
         z, M = self.zoom, int(PopWin.M * self.zoom)
         tl = self.mapToGlobal(r.topLeft())
-        if getattr(self, "music_view", "full") == "full" and r.width() >= 280 and r.height() >= 300:
+        if page and getattr(self, "music_view", "full") == "full":
+            gx, gy, pw_, ph_ = (float(v) for v in page[:4])
+            cw, ch = int(pw_ * z), int(ph_ * z)
+            grab = QPoint(int(gx * z), int(gy * z))
+        elif getattr(self, "music_view", "full") == "full" and r.width() >= 280 and r.height() >= 300:
             cw, ch = r.width(), r.height()
             grab = self.press_at - tl
         else:                                             # the small player: comes off at the popped-out size
@@ -2651,6 +2656,9 @@ class Host(QWidget):
         if pw is None:
             return False
         pw.drag(grab=pos - pw.pos(), immediate=True)
+        pw.born = True                                    # r52: lands in your hand with a wobble
+        if pw.ready:
+            pw.js("pwborn", "")
         return True
 
     def pop_home(self):
@@ -2708,6 +2716,9 @@ class Host(QWidget):
         """It's the player now: on screen, and the island lets go of its own."""
         pw.warm = False
         pw.hov_t.start(60)
+        if getattr(pw, "born", False):
+            pw.born = False
+            pw.js("pwborn", "")
         pw.js("pwdock", json.dumps(pw.dock))
         if not pw.fs_hidden:
             pw.show()
@@ -3289,6 +3300,12 @@ class Host(QWidget):
             self.update_meter()
         elif name == "press":
             self.press_at = QCursor.pos()
+        elif name == "tear":                              # r52: the stretched player tore off the island
+            if getattr(self, "popw", None) is None and left_button_down():
+                if not self.tear_off(QCursor.pos(), page=arg):
+                    self.js("popped", "in")
+            elif getattr(self, "popw", None) is None:
+                self.js("popped", "in")                   # the button came up first: back in
         elif name == "pop_player":
             self.pop_open(rect=arg)
         elif name == "pw_front":
@@ -3468,7 +3485,9 @@ class Host(QWidget):
             except Exception as e:
                 print("hud action:", e)
         elif name == "timer_cancel":
+            gone = [t for t in self.timers if t["id"] == arg]
             self.timers = [t for t in self.timers if t["id"] != arg]
+            self.forget_started(gone)
             self.push_timers()
         elif name == "set":
             self.set_setting(str(arg[0]), arg[1])
@@ -4022,6 +4041,14 @@ class Host(QWidget):
     def item_timer(self, ik):
         return next((x for x in self.timers if x.get("item") == ik), None)
 
+    def forget_started(self, gone):
+        """Timers stopped by hand ('stop', or the pill's stop): a started plan item then gets the planned-end "done?"
+        like one never started (it used to get no question at all)."""
+        st = self.state.get("started") or {}
+        for x in gone:
+            if x.get("item") and not any(y.get("item") == x["item"] for y in self.timers):
+                st.pop(x["item"], None)
+
     def drop_item_timer(self, ik):
         if self.item_timer(ik):
             self.timers = [x for x in self.timers if x.get("item") != ik]
@@ -4070,10 +4097,10 @@ class Host(QWidget):
         self.notify(key, t["cat"], kicker, f"{t['title']} — start?", body,
                     [("Start ▶", lambda: self.start_item(t, day)), ("Snooze 10m", snooze), ("Skip", None)], timeout, item=ik)
 
-    def done_toast(self, key, t, kicker, timeout=120):
+    def done_toast(self, key, t, kicker, timeout=120, day=None):
         """Its time is up: "Maths — done?"  Done ✓ / +15 min / Not done."""
         m = self.model
-        day = m.today()
+        day = day or m.today()
         ik = t["key"]
         if not self.one_per_item(ik):
             return
@@ -6693,7 +6720,8 @@ class Host(QWidget):
                 self.push_timers()
                 return self.hud("timer", "Stopwatch started", ms=1200)
             if low in ("stop", "cancel"):
-                self.timers = []
+                gone, self.timers = self.timers, []
+                self.forget_started(gone)
                 self.push_timers()
                 return self.hud("timer", "Timers cleared", ms=1200)
             m = re.match(r"^(?:n|note|idea)\s+(.+)$", t, re.I)
@@ -7287,9 +7315,13 @@ class Host(QWidget):
             self.push_timers()
             for t in done:
                 if t.get("item"):                    # r47: a started plan item: ask if it's done
-                    it = next((x for x in self.model.items(self.model.today()) if x["key"] == t["item"]), None)
+                    try:                             # the day it was started (a session running past 4 AM is still yesterday's)
+                        tday = dt.date.fromisoformat(str(t.get("day") or ""))
+                    except ValueError:
+                        tday = self.model.today()
+                    it = next((x for x in self.model.items(tday) if x["key"] == t["item"]), None)
                     if it and not it["done"]:
-                        self.done_toast(f"idone-{t['id']}", it, f"{CAT_NAME.get(it['cat'], '')} · time's up")
+                        self.done_toast(f"idone-{t['id']}", it, f"{CAT_NAME.get(it['cat'], '')} · time's up", day=tday)
                     continue
                 if t.get("mock"):
                     cat = t["mock"]
@@ -7299,9 +7331,10 @@ class Host(QWidget):
                                     (p["id"] for p in self.study.papers() if p["cat"] == cat and p["mock"] and p["score"] is None
                                      and not p["missing"]), cat) + " ")), ("Later", None)], 300, kind="timer")
                     continue
-                lbl, total = t.get("label") or "", t.get("total", 0)
-                self.notify(f"timer-{t['id']}", "E", "timer · done",
-                            lbl or (fmt_min(total / 60) if total >= 60 else f"{int(total)}s") + " timer",
+                lbl, total = t.get("label") or "", int(t.get("total", 0) or 0)
+                self.notify(f"timer-{t['id']}", "E", "timer · done",      # '1m 30s timer' like the start HUD (was '1m timer')
+                            lbl or (f"{total // 60}m {total % 60:02d}s" if 60 < total < 3600 and total % 60
+                                    else fmt_min(total / 60) if total >= 60 else f"{total}s") + " timer",
                             "", [("+5 min", lambda lbl=lbl: self.add_timer(300, lbl)), ("OK", None)], 60, kind="timer")
         # private mode while OBS is open
         if self.settings.get("share") and now - self._obs_at > 10:
