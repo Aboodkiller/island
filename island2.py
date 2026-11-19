@@ -4504,6 +4504,8 @@ class Host(QWidget):
             print(f"setting {k} = {v!r}")
             if k == "desk":
                 QTimer.singleShot(0, self.desk_sync)
+            if k == "block":
+                QTimer.singleShot(400, lambda: (self.block_tick(), self.hud("info", "Site blocker", r=self.block_status(), ms=4200)))
             if k == "buddy":
                 self.buddy_arm()
             if k == "lan":
@@ -4602,7 +4604,8 @@ class Host(QWidget):
             else:
                 QTimer.singleShot(12000, lambda: self.hud("ok" if island_study.blocker_installed() else "info",
                                                           "Site blocker ready" if island_study.blocker_installed()
-                                                          else "Site blocker not installed", ms=2200))
+                                                          else "Site blocker not installed",
+                                                          r=self.block_status() if island_study.blocker_installed() else "", ms=4200))
         elif what == "sound_folder" and WIN:
             d = os.path.join(HERE, "sounds")
             os.makedirs(d, exist_ok=True)
@@ -5065,13 +5068,53 @@ class Host(QWidget):
         self._cards_day = today
         self.js("cards", self.cards.summary(today))
 
-    def block_tick(self):
+    def block_wanted(self):
+        """Until when the sites should be blocked (epoch, 0 = not now): the focus session of a study block, a study
+        session you pressed Start on (its countdown, r55), or "block 60" typed in the command bar."""
+        now, ends = time.time(), []
+        if self.pomo:
+            ends.append(int(self.pomo["end"]))
+        ends += [int(t["end"]) for t in self.timers if str(t.get("item", "")).startswith("S:") and t.get("end", 0) > now]
+        mb = int(self.state.get("block_now") or 0)
+        if mb > now:
+            ends.append(mb)
+        return max(ends) if ends else 0
+
+    def block_tick(self, quiet=False):
         """Site blocker: on for the whole study block / focus session (setting 'block' + one-time setup)."""
-        want = int(self.pomo["end"]) if (self.pomo and self.settings.get("block") and island_study.blocker_installed()) else 0
+        want = self.block_wanted() if (self.settings.get("block") and island_study.blocker_installed()) else 0
         if want != self._block_until:
+            was = self._block_until
             self._block_until = want
             if island_study.set_block(want or None):
                 print(f"site blocker: {'on until ' + self.t12(dt.datetime.fromtimestamp(want)) if want else 'off'}")
+                if quiet:
+                    pass
+                elif want and not was:              # r55: say it, so you know it's working (takes up to a minute)
+                    self.hud("lock", "Distractions blocked", r=f"until {self.t12(dt.datetime.fromtimestamp(want))}", ms=2600)
+                elif was and not want:
+                    self.hud("info", "Sites unblocked", ms=1600)
+
+    def block_status(self):
+        """Why it isn't blocking right now (one line for the HUD)."""
+        if not island_study.blocker_installed():
+            return "not set up yet: Settings → Study → Set up the site blocker"
+        if not self.settings.get("block"):
+            return "it's switched off in Settings"
+        if self._block_until:
+            return f"blocking until {self.t12(dt.datetime.fromtimestamp(self._block_until))}"
+        nx = None
+        try:
+            now = dt.datetime.now()
+            for t in self.model.items(self.model.today(now)):
+                if str(t.get("key", "")).startswith("S:") and not t.get("done"):
+                    s0, _ = self.model.span(t, self.model.today(now))
+                    if s0 and s0 > now:
+                        nx = (t.get("title", "study"), s0)
+                        break
+        except Exception:
+            pass
+        return "on in study sessions" + (f" · next {nx[0]} {self.t12(nx[1])}" if nx else "") + " · or type block 60"
 
     # ---------------------------------------------------------- round 5: the day's rhythm
     @staticmethod
@@ -5899,6 +5942,25 @@ class Host(QWidget):
     def study_cmd(self, low, t):
         """Command bar: focus [subject|stop], mock <subject>, exam <subject> <date>, score <paper> <n>, chat <subject>."""
         today = self.model.today()
+        m = re.match(r"^(?:block|blocker)\s*(\?|[a-z]+|\d+)?(?:\s*(?:m|min|mins|minutes))?\s*$", low)
+        if m:                                   # r55: "block 60" now, "block off", "block" = 60 min, "block?" = status
+            w = m.group(1)
+            if w in ("?", "status", "info") or (w and w not in ("off", "stop", "end", "no", "on", "now") and not w.isdigit()):
+                return self.hud("info", "Site blocker", r=self.block_status(), ms=3600)
+            if w in ("off", "stop", "end", "no"):
+                self.state["block_now"] = 0
+                self.save_state()
+                self.block_tick(quiet=True)
+                if self._block_until:
+                    return self.hud("info", "Still blocked", r="a study session is on: focus stop ends it", ms=2600)
+                return self.hud("info", "Sites unblocked", ms=1600)
+            mins = int(w) if w and w.isdigit() else 60
+            if not island_study.blocker_installed() or not self.settings.get("block"):
+                return self.hud("info", "Site blocker", r=self.block_status(), ms=3600)
+            self.state["block_now"] = int(time.time() + max(1, min(mins, 600)) * 60)
+            self.save_state()
+            self.block_tick(quiet=True)
+            return self.hud("lock", "Distractions blocked", r=f"until {self.t12(dt.datetime.fromtimestamp(self._block_until))} · in ~1 min", ms=2800)
         m = re.match(r"^focus(?:\s+(\S+))?$", low)
         if m:
             w = m.group(1)
