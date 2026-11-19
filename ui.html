@@ -500,9 +500,9 @@ body.popw.pwr #pwtab{left:auto;right:6px;transform:translateX(12px)}
   transform:scaleY(calc(.82 + var(--lv,0) * .3));transition:transform .12s ease-out}
 body.popw.ptuck #pwtab{opacity:1;transform:none;transition:opacity .3s .18s,transform .5s .12s cubic-bezier(.25,1.45,.45,1)}
 body.popw.ptuck #isl{transform:translateX(calc(-100% - 24px))!important;opacity:.0;
-  transition:transform .42s cubic-bezier(.55,0,.75,.2),opacity .25s .17s!important}
+  visibility:hidden;transition:transform .42s cubic-bezier(.55,0,.75,.2),opacity .25s .17s,visibility 0s .45s!important}
 body.popw.ptuck.pwr #isl{transform:translateX(calc(100% + 24px))!important}
-body.popw.ptuck .vrec,body.popw.ptuck .vaura,body.popw.ptuck .vaura *{animation-play-state:paused!important}
+body.popw.ptuck #isl,body.popw.ptuck #isl *{animation-play-state:paused!important}   /* r58: tucked = draws nothing */
 body.popw .ear,body.popw #bub,body.popw #neck,body.popw #stk,body.popw #halo{display:none!important}
 body.popw .layer{transition:none}
 body.popw .music .mtop{cursor:grab}
@@ -4272,6 +4272,7 @@ function lyrWords() {             // fill each syllable / word as it's sung (Spo
   });
 }
 (function kloop() {               // ~30 fps while lyrics are on screen and the song plays
+  if (POPW && document.body.classList.contains("ptuck")) { setTimeout(kloop, 400); return; }   // r58: tucked player: no frames
   requestAnimationFrame(kloop);
   const t = performance.now(); if (t - (S.kT || 0) < 32) return; S.kT = t;
   if (S.lyr && S.media && S.media.playing && S.mode !== "toast" && !document.hidden) lyrWords();

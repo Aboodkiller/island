@@ -2419,8 +2419,8 @@ class Host(QWidget):
         k = getattr(self, "desk", None)
         if k is not None and k.ready and fn in DESK_FNS:
             k.js(fn, a)
-        if pw is not None and pw.ready and fn in POP_FNS:
-            pw.js(fn, a)
+        if pw is not None and pw.ready and fn in POP_FNS and not (fn == "lvl" and pw.tucked):
+            pw.js(fn, a)                          # r58: tucked into its edge it doesn't redraw to the beat
         ww = getattr(self, "popw_warm", None)
         if ww is not None and ww.ready and fn in POP_FNS and fn != "lvl":
             ww.js(fn, a)
