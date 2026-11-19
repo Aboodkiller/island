@@ -4812,6 +4812,9 @@ window.island = {
   lyrics(x) {
     const was = lyrShown();
     S.lyr = x && x.lines && x.lines.length ? x : null; S.lyrIdx = -2;
+    // r57: the same song's lyrics can come again with new timing (Spotify's line lyrics, then Spicy Lyrics' word
+    // timing 2 s later, same key, different lines): the big player / deck kept the old lines and lost its place
+    S.musicKey = null; S.dkFullKey = null;
     if (S.mode === "peek" && was !== lyrShown()) { S.peekH = null; setMode("peek"); renderPeek(); }
     if (S.mode === "pill" && was !== lyrShown()) { S.pillH = null; renderPill(); }
     if (S.mode === "music") renderMusic();
