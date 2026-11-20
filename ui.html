@@ -761,7 +761,7 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .sti:hover{filter:brightness(1.18)}
 .sti:active{transform:scale(.95)}
 .sti.done{color:var(--mut);background:rgba(255,255,255,.05)}
-.sti.done > span{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.3)}
+.sti.done .stn{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.3)}
 .sti.done > i{background:var(--c)}
 .sti.now{box-shadow:0 0 0 1.5px var(--c) inset}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
@@ -2116,10 +2116,17 @@ if (DECK) for (const k of ["vol", "mute", "mic_toggle", "cmd", "deck_tiles", "co
 const DESK_SEND = new Set(["ready", "desk_size", "desk_hide", "desk_unpeek", "audio_dev", "desk_open", "desk_prefill", "cmd", "say", "water", "launch", "life_toggle",
   "media_toggle", "media_next", "media_prev"]);
 const send = (name, arg) => { if (POPW ? !POP_SEND.has(name) : DASH && !DASH_SEND.has(name) && !(DESKW && DESK_SEND.has(name))) return; try { if (DECK_HTTP) deckPost(name, arg); else if (py) py.action(JSON.stringify({name, arg})); else window.__mock && window.__mock(name, arg); } catch (e) { console.log(e); } };
+// r59: Python's updates arrive over the channel as (function, JSON argument) instead of one runJavaScript per update
+// (each of those compiled a new script that the page never freed: the heap grew to 250 MB and GC froze everything)
+function pushIn(fn, a) {
+  const I = window.island, f = I && I[fn]; if (typeof f !== "function") return;
+  let v; if (a !== "") { try { v = JSON.parse(a); } catch (e) { try { v = (0, eval)("(" + a + ")"); } catch (e2) { console.log("push " + fn + ": bad argument"); return; } } }
+  try { if (a === "") f.call(I); else f.call(I, v); } catch (e) { console.log("push " + fn + ": " + (e && e.stack || e)); }
+}
 // connect to Python. Python also injects qwebchannel.js itself after load, then calls __connect()
 window.__connect = () => {
   if (py || !(window.qt && window.qt.webChannelTransport && window.QWebChannel)) return false;
-  new QWebChannel(qt.webChannelTransport, ch => { py = ch.objects.bridge; send("ready");
+  new QWebChannel(qt.webChannelTransport, ch => { py = ch.objects.bridge; if (py.push) py.push.connect(pushIn); send("ready");
     send("ui_log", `env: reduced motion ${matchMedia("(prefers-reduced-motion: reduce)").matches ? "ON (Windows animations off)" : "off"}, ${devicePixelRatio}x, ${screen.width}x${screen.height}`); });
   return true;
 };
@@ -3473,7 +3480,7 @@ function todaySimple() {
     h += oneHero(hero, kick, hero.desc || "", btns);
   } else h += `<div class="shero" style="--c:#4ade80"><span class="shic">${hico("ok", 26)}</span><div class="col" style="gap:4px"><span class="shk">Today</span><span class="sht">${L.length ? "All done. Go rest." : "Nothing planned today."}</span></div></div>`;
   if (d.water.goal) {
-    const w = d.water, L2 = x => (x / 1000).toFixed(1).replace(/\.0$/, "");
+    const w = d.water, L2 = x => (x / 1000).toFixed(2).replace(/\.?0+$/, "");     // same as the full card: 5.74, 2.5, 3
     h += `<div class="owat">${I.drop("#22d3ee", 16)}<b>${L2(w.ml)}<small>/${L2(w.goal)} L</small>${w.ml >= w.goal ? `<small class="owok" title="goal hit">✓</small>` : ""}</b><div class="bar" style="flex:1;height:7px;border-radius:4px"><b style="width:${Math.min(100, w.ml / w.goal * 100)}%;background:linear-gradient(90deg,#0ea5e9,#22d3ee)"></b></div>
       ${w.chips.filter(c => c > 0).slice(0, 2).map(c => `<span class="ochip" data-a="water" data-v="${c}">+${c >= 1000 && c % 1000 === 0 ? c / 1000 + "L" : c}</span>`).join("")}</div>`;
   }
@@ -3597,7 +3604,7 @@ function studyHero(st) {
 }
 function studyStrip(st) {
   const L = st.today || []; if (L.length < 2) return "";
-  return `<div class="stoday">${L.map(i => `<span class="sti ${i.done ? "done" : ""} ${i.state === "now" ? "now" : ""}" style="--c:${CAT[i.cat] || "#94a3b8"}" data-a="study_tick" data-v="${esc(i.key)}" title="${esc(i.desc)} · tap to tick"><i>${i.done ? hico("ok", 11) : ""}</i><span>${T(i.time || "")} ${esc(i.title)}</span></span>`).join("")}</div>`;
+  return `<div class="stoday">${L.map(i => `<span class="sti ${i.done ? "done" : ""} ${i.state === "now" ? "now" : ""}" style="--c:${CAT[i.cat] || "#94a3b8"}" data-a="study_tick" data-v="${esc(i.key)}" title="${esc(i.desc)} · tap to tick"><i>${i.done ? hico("ok", 11) : ""}</i><span>${T(i.time || "")} <span class="stn">${esc(i.title)}</span></span></span>`).join("")}</div>`;
 }
 function studyGrid(st) {
   if (!st.subjects.length) return "";

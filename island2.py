@@ -1334,6 +1334,10 @@ def weather_more(lat, lon):
 
 # ============================================================== bridge
 class Bridge(QObject):
+    # r59: Python -> page updates go over the web channel. runJavaScript compiled a new script for every call and the page
+    # never gave that memory back (~250 MB after 10 h of lyrics / level updates -> 0.2 s GC stalls = everything stuttering).
+    push = Signal(str, str)
+
     def __init__(self, host):
         super().__init__()
         self.host = host
@@ -1361,6 +1365,8 @@ class Page(QWebEnginePage):
 
 class DashBridge(QObject):
     """The dashboard page's way back: only the things you can tap there (see DASH_SEND in ui.html)."""
+    push = Signal(str, str)                   # r59: updates to the page (see Bridge)
+
     def __init__(self, host):
         super().__init__()
         self.host = host
@@ -1481,11 +1487,13 @@ class DashWin(QWidget):
 
     def js(self, fn, a):
         if self.ready:
-            self.page.runJavaScript(f"window.island && window.island.{fn}({a})")
+            self.dbridge.push.emit(fn, a if isinstance(a, str) else json.dumps(a))
 
 
 class DeskBridge(QObject):
     """The desktop widgets' way back (DESK_SEND in ui.html)."""
+    push = Signal(str, str)                   # r59: updates to the page (see Bridge)
+
     def __init__(self, host):
         super().__init__()
         self.host = host
@@ -1601,11 +1609,13 @@ class DeskWin(QWidget):
     def js(self, fn, a):
         if self.ready and not getattr(self, "paused", False):
             self.calls = getattr(self, "calls", 0) + 1
-            self.page.runJavaScript(f"window.island && window.island.{fn}({a})")
+            self.bridge2.push.emit(fn, a if isinstance(a, str) else json.dumps(a))
 
 
 class PopBridge(QObject):
     """The popped-out player's way back (POP_SEND in ui.html)."""
+    push = Signal(str, str)                   # r59: updates to the page (see Bridge)
+
     def __init__(self, host):
         super().__init__()
         self.host, self.win = host, None
@@ -2005,7 +2015,7 @@ class PopWin(QWidget):
 
     def js(self, fn, a):
         if self.ready:
-            self.page.runJavaScript(f"window.island && window.island.{fn}({a})")
+            self.pbridge.push.emit(fn, a if isinstance(a, str) else json.dumps(a))
 
 
 # ============================================================== host window
@@ -2413,7 +2423,7 @@ class Host(QWidget):
             self._js_n = getattr(self, "_js_n", 0) + 1
             jc = self.__dict__.setdefault("_js_fn", {})
             jc[fn] = jc.get(fn, 0) + 1
-            self.page.runJavaScript(f"window.island && window.island.{fn}({a})")
+            self.bridge.push.emit(fn, a)
         if d is not None and d.ready and fn in DASH_FNS:
             d.js(fn, a)
         k = getattr(self, "desk", None)
@@ -4984,14 +4994,17 @@ class Host(QWidget):
                 self._blk_at = now
                 self._blk = self.study_block(now_dt)
             blk = self._blk
-            blk_key = blk[0] if blk and blk[0] != self.state.get("pomo_skip") else None
+            sk = self.state.get("pomo_skip")             # [key, day]: a stop only counts for that day's block
+            skip = sk[0] if isinstance(sk, list) and len(sk) == 2 and sk[1] == str(self.model.today(now_dt)) else None
+            blk_key = blk[0] if blk and blk[0] != skip else None
         if blk_key != self.pomo_key:
             self.pomo_key, self.pomo_phase = blk_key, None
             if blk_key is None:
                 self.pomo = None
             elif not (p and p.get("free")):
                 a = self.state.get("pomo_anchor")
-                t0 = a[1] if isinstance(a, list) and a[0] == blk_key else blk[2].timestamp()
+                t0 = (a[1] if isinstance(a, list) and a[0] == blk_key and blk[2].timestamp() - 60 <= a[1] <= blk[3].timestamp()
+                      else blk[2].timestamp())               # an anchor from another day's block with the same key doesn't count
                 self.pomo = dict(key=blk_key, cat=blk[1], name=island_study.SUBJ[blk[1]], t0=t0, end=blk[3].timestamp())
             self.guard_game = None
             self.js("pomo", self.pomo_js())
@@ -5967,11 +5980,18 @@ class Host(QWidget):
             if w in ("stop", "off", "end"):
                 if self.pomo:
                     if not self.pomo.get("free"):
-                        self.state["pomo_skip"] = self.pomo["key"]
+                        self.state["pomo_skip"] = [self.pomo["key"], str(self.model.today())]
                     self.pomo, self.pomo_key = None, None
                     self.save_state()
                     self.js("pomo", None)
                 return self.hud("timer", "Focus stopped", ms=1300)
+            if not w and not self.pomo:                         # "focus" after "focus stop": that session back on
+                blk, sk = self.study_block(dt.datetime.now()), self.state.get("pomo_skip")
+                if blk and isinstance(sk, list) and sk[0] == blk[0]:
+                    self.state.pop("pomo_skip", None)
+                    self.save_state()
+                    self._blk_at = 0
+                    return self.hud("timer", f"{island_study.SUBJ[blk[1]]} · focus back on", r=f"until {self.t12(blk[3])}", ms=2200)
             cat = island_study.subject(w) if w else (self.pomo["cat"] if self.pomo else None)
             if self.pomo and not self.pomo.get("free") and (not w or cat == self.pomo["cat"]):
                 self.pomo["t0"] = time.time()                    # restart the 50/10 clock from now
