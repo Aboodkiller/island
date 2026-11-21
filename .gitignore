@@ -33,3 +33,4 @@ plans/*.bak
 update.json
 *.orig
 *.rej
+qtfix/

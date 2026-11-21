@@ -37,6 +37,53 @@ from PySide6.QtGui import QGuiApplication, QCursor, QColor, QAction
 from PySide6.QtWidgets import QApplication, QWidget, QMenu, QVBoxLayout, QSystemTrayIcon
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QBrush
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
+
+
+def _qtfix():
+    """r61: load qtfix/Qt6WebEngineCore.dll (the island's own copy) before Qt WebEngine loads the installed one.
+    The island's native crashes are all one spot in that DLL: ANGLE's D3D11 code (StateManager11, +0xd23c7f) reads a
+    cached input layout whose handle is null and dies before IASetInputLayout. The copy is PySide6_WebEngine 6.12.0.140's
+    DLL with a null check there (null -> 'no input layout', the code path it already has): 28 bytes changed, the
+    Authenticode signature removed. Used only when the installed DLL is that exact build; off with --no-qtfix or a
+    file qtfix/off. Windows reuses an already loaded DLL of the same name, so Qt WebEngine then runs on the copy."""
+    if sys.platform != "win32" or "--no-qtfix" in sys.argv:
+        return "off"
+    here = os.path.dirname(os.path.abspath(__file__))
+    fix = os.path.join(here, "qtfix", "Qt6WebEngineCore.dll")
+    if not os.path.exists(fix) or os.path.exists(os.path.join(here, "qtfix", "off")):
+        return "off"
+    mark = os.path.join(here, "qtfix", "starting")
+    if os.path.exists(mark):                     # the last start with the copy never got its page up: never again
+        try:
+            os.replace(mark, os.path.join(here, "qtfix", "off"))
+        except Exception:
+            pass
+        return "off (the last start with it never got ready; delete qtfix/off to try again)"
+    try:
+        import ctypes
+        import struct
+        import PySide6
+        pdir = os.path.dirname(os.path.abspath(PySide6.__file__))
+        inst = os.path.join(pdir, "Qt6WebEngineCore.dll")
+        with open(inst, "rb") as f:
+            head = f.read(4096)
+        pe = struct.unpack_from("<I", head, 0x3C)[0]
+        stamp = struct.unpack_from("<I", head, pe + 8)[0]
+        if stamp != 0x6AB90E52 or os.path.getsize(inst) != 203489592:
+            return f"skipped (installed Qt6WebEngineCore.dll is another build: {stamp:#x}, {os.path.getsize(inst)} bytes)"
+        try:
+            os.add_dll_directory(pdir)            # its own dependencies (Qt6Quick, Qt6WebChannel, ...) come from PySide6
+        except Exception:
+            pass
+        with open(mark, "w") as f:
+            f.write(str(time.time()))
+        ctypes.WinDLL(fix)
+        return "on (patched Qt6WebEngineCore.dll: ANGLE input-layout null check)"
+    except Exception as e:
+        return f"failed ({e}), using the installed DLL"
+
+
+QTFIX = _qtfix()
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEngineSettings, QWebEnginePage
 from PySide6.QtWebChannel import QWebChannel
@@ -8041,6 +8088,10 @@ class Host(QWidget):
             return
         self._shown = True
         print(f"ui ready in {time.time() - self._t0:.1f} s")
+        try:                                      # r61: the patched Qt WebEngine got the page up: keep using it
+            os.remove(os.path.join(HERE, "qtfix", "starting"))
+        except Exception:
+            pass
         a = QVariantAnimation(self)
         a.setStartValue(0.0)
         a.setEndValue(1.0)
@@ -8276,6 +8327,7 @@ def main():
     elif lvl == 1:
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --disable-gpu-rasterization"
     print(f"render: level {lvl} ({['GPU', 'GPU compositing, CPU raster', 'software'][min(lvl, 2)]}){why}")
+    print("qtfix:", QTFIX)
     QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
