@@ -8211,26 +8211,24 @@ RENDER_FILE = os.path.join(HERE, "render_mode.json")
 
 def render_level():
     """r60: the island's native crashes are all one bug in Qt WebEngine's GPU thread: ANGLE's D3D11 backend reads a
-    dead input layout (Qt6WebEngineCore.dll +0xd23c83, StateManager11 -> IASetInputLayout). Level 1 (default) rasters
-    on the CPU, so the GPU only composites (most of ANGLE's draws gone); after 2 of those crashes within 24 h at
-    level 1 it moves to level 2 = all software (no ANGLE at all) and stays there. render_mode.json {"level": 1} resets."""
+    dead input layout (Qt6WebEngineCore.dll +0xd23c83, StateManager11 -> IASetInputLayout). Level 0 = GPU (default),
+    1 = CPU raster, 2 = all software. r60b: 1 made every frame 70-260 ms on this PC, so 0 stays the default and nothing
+    switches by itself; render_mode.json {"level": N} picks one by hand. Crashes are still counted there."""
     try:
         with open(RENDER_FILE, encoding="utf-8") as f:
             st = json.load(f)
     except Exception:
         st = {}
     try:
-        lvl = int(st.get("level", 1))
+        lvl = int(st.get("level", 0))
     except Exception:
-        lvl = 1
+        lvl = 0
     now, why = time.time(), ""
     crashes = [c for c in st.get("crashes", []) if isinstance(c, list) and len(c) == 2 and now - c[0] < 86400]
     args = sys.argv
     after = args[args.index("--after") + 1] if "--after" in args[:-1] else ""
     if after == "crash3221225477":                     # 0xC0000005 (the watchdog says so)
-        crashes.append([now, lvl])
-        if lvl == 1 and sum(1 for c in crashes if c[1] == 1) >= 2:
-            lvl, why = 2, " -- 2 Qt WebEngine crashes in 24 h, switching to software"
+        crashes.append([now, lvl])     # r60b: no automatic switching: CPU raster made every frame 70-260 ms
     st.update(level=lvl, crashes=crashes[-20:])
     try:
         with open(RENDER_FILE, "w", encoding="utf-8") as f:
