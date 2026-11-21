@@ -2256,6 +2256,9 @@ class Host(QWidget):
         self.follow_timer.start(250)
         self.fs_timer = QTimer(self)      # fullscreen check + system stats
         self.fs_timer.timeout.connect(self.on_second)
+        self.stall_t = QTimer(self)                   # r63: 100 ms heartbeat -> "main thread: stuck N ms" in island.log
+        self.stall_t.timeout.connect(self.stall_tick)
+        self.stall_t.start(100)
         self.fs_timer.start(1000)
         self.hb = QTimer(self)            # heartbeat for island_watchdog.pyw (proves the UI thread is alive)
         self.hb.timeout.connect(feats.heartbeat)
@@ -2843,6 +2846,10 @@ class Host(QWidget):
             if name == "ready":                       # r51: loaded in the background, waiting to be torn off
                 ww.ready = True
                 self.pop_feed(ww)
+            return
+        if name == "pw_perf" and isinstance(arg, dict):   # r63: how its first 3 s on screen went
+            print(f"player: first 3 s on screen: {arg.get('n')} frames, avg {arg.get('avg')} ms, worst {arg.get('worst')} ms, "
+                  f"{arg.get('long')} over 50 ms")
             return
         pw = getattr(self, "popw", None)
         if pw is None or (win is not None and win is not pw):
@@ -3838,6 +3845,15 @@ class Host(QWidget):
             user32.SetWindowPos(ctypes.c_void_p(me), ctypes.c_void_p(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
         except Exception as e:
             print("island over player:", e)
+
+    def stall_tick(self):
+        """r63: the player's drag, hover and click-through run on this (Qt's main) thread: log when it was stuck."""
+        now = time.perf_counter()
+        late = (now - getattr(self, "_st_last", now)) - 0.1
+        self._st_last = now
+        if late > 0.35 and now - getattr(self, "_st_said", 0) > 10:
+            self._st_said = now
+            print(f"main thread: stuck {int(late * 1000)} ms" + (" (player out)" if getattr(self, "popw", None) is not None else ""))
 
     def on_second(self):
         self.follow_tick()

@@ -110,10 +110,14 @@ body.notch.dock-top.dashm .ear,#isl.gone~.ear{opacity:0}
 #earR{background:radial-gradient(circle at 100% 100%,transparent calc(var(--ew,12px) - .7px),var(--bg) var(--ew,12px))}
 /* music rim: a slow light that runs around the edge in the cover's colour while a song plays */
 @property --ga{syntax:"<angle>";inherits:false;initial-value:0deg}
-#isl .rim{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:4;opacity:0;transition:opacity .7s ease;
-  background:conic-gradient(from var(--ga),transparent 0deg,var(--tint,#1ed760) 55deg,transparent 120deg,transparent 180deg,var(--tint,#1ed760) 235deg,transparent 300deg);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
-  animation:rim 6s linear infinite;animation-play-state:paused}
+#isl .rim{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:4;opacity:0;transition:opacity .7s ease;overflow:hidden;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation-play-state:paused}
+/* r63: the light is a big conic square that rotates (a GPU transform). Before, the gradient's angle itself was animated,
+   which repainted the whole rim 60 times a second for as long as a song played. Same look. */
+#isl .rim::before{content:"";position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1;translate:-50% -50%;will-change:transform;
+  background:conic-gradient(transparent 0deg,var(--tint,#1ed760) 55deg,transparent 120deg,transparent 180deg,var(--tint,#1ed760) 235deg,transparent 300deg);
+  animation:rimr 6s linear infinite;animation-play-state:inherit}
+@keyframes rimr{to{transform:rotate(360deg)}}
 body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;animation-play-state:running}
 @keyframes rim{to{--ga:360deg}}
 /* backdrops use a pre-blurred copy of the cover: no live blur filter to redraw every frame */
@@ -2123,7 +2127,7 @@ const DECK_HTTP = DECK && /^https?:$/.test(location.protocol);
 const DASH = location.hash === "#dash" || DECK || DESKW;
 const POPW = location.hash === "#player";          // r41: the music player popped out of the island into its own window
 const PWM = 14;                                    // its margin for the shadow
-const POP_SEND = new Set(["ready", "pw_drag", "pw_resize", "pw_rz", "pw_pin", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
+const POP_SEND = new Set(["ready", "pw_perf", "pw_drag", "pw_resize", "pw_rz", "pw_pin", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
   "media_shuffle", "media_repeat", "media_like", "media_src"]);
 const DASH_SEND = new Set(["ready", "toggle", "ex", "water", "launch", "dash_close", "media_toggle", "media_next", "media_prev",
   "media_seek", "media_shuffle", "media_repeat", "media_like", "media_src"]);
@@ -4369,6 +4373,15 @@ function popIdle() {
     <span class="mx" data-a="pw_in" title="Back into the island"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14H4v6M4 20l7-7"/><rect x="11" y="3" width="10" height="8" rx="2"/></svg></span><span class="mx" data-a="pw_close" title="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
     <div class="mbig"><div class="pidv"></div></div></div>`;
 }
+// r63: each time the player comes on screen, time its first 3 s of frames and tell Python (island.log "player: ...")
+if (POPW) document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  const t0 = performance.now(), ts = [];
+  (function f(t) { ts.push(t); if (t - t0 < 3000) requestAnimationFrame(f); else {
+    const d = ts.slice(1).map((x, i) => x - ts[i]); if (!d.length) return;
+    send("pw_perf", {n: d.length, avg: +(d.reduce((a, b) => a + b, 0) / d.length).toFixed(1), worst: Math.round(Math.max(...d)),
+      long: d.filter(x => x > 50).length, first: Math.round(ts[0] - t0)}); } })(t0);
+});
 function popInit() {
   document.body.className = "dock-top popw";
   if (!$("pwtab")) { const t = document.createElement("div"); t.id = "pwtab"; t.innerHTML = "<i></i>"; document.body.appendChild(t); }
