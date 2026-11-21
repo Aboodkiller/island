@@ -1810,6 +1810,9 @@ class PopWin(QWidget):
                     self.set_tuck(True)
                 want_ct = not c.contains(pos) and not busy and not down
             if want_ct != self.ct:
+                if time.time() < getattr(self, "dbg_until", 0):
+                    print(f"player: +{15 - (getattr(self, 'dbg_until', 0) - time.time()):.1f}s click-through {'on' if want_ct else 'off'}"
+                          f"{' (tucked)' if self.tucked else ''}{' busy' if busy else ''}")
                 self.ct = want_ct
                 set_click_through(self, want_ct)
             near = c.adjusted(-260, -260, 260, 260).contains(pos)
@@ -1965,14 +1968,21 @@ class PopWin(QWidget):
         g = (QGuiApplication.screenAt(r.center()) or self.screen()).availableGeometry()
         wmax, hmax = int((900 + 2 * self.M) * z), int((1100 + 2 * self.M) * z)
         if self.dock == "right":
-            right = r.right()
-            w = min(wmax, right - g.left() + int(M))
-            self.rz = ("right", right, r.top())
-            self.setGeometry(right - w + 1, r.top(), w, min(hmax, max(r.height(), g.bottom() + int(M) - r.top())))
+            # r64: grow to the right (past the screen edge) with the left edge kept, and slide the window left as the
+            # card grows (rz_move): moving the left edge at once showed Qt's old frame shifted toward the middle
+            self.rz = ("right", r.right() - int(M), r.top())        # the card's right edge stays here
+            self.setGeometry(r.left(), r.top(), max(r.width(), wmax), min(hmax, max(r.height(), g.bottom() + int(M) - r.top())))
         else:
             self.rz = ("left", r.left(), r.top())
             self.setGeometry(r.left(), r.top(), min(wmax, max(r.width(), g.right() + int(M) - r.left())),
                              min(hmax, max(r.height(), g.bottom() + int(M) - r.top())))
+
+    def rz_move(self, cw):
+        """r64: right edge: the card (pinned left in the page) is cw page px wide now: slide the window so its right edge stays."""
+        if not self.rz or self.rz[0] != "right":
+            return
+        z, M = self.host.zoom, int(self.M * self.host.zoom)
+        self.move(self.rz[1] - int(round(float(cw) * z)) + 1 - M, self.y())
 
     def rz_end(self, cw, ch):
         """The card's final size (page px): the window fits it again, same pinned corner, then it re-sticks to its edge."""
@@ -1981,7 +1991,8 @@ class PopWin(QWidget):
         w, h = max(self.minimumWidth(), w), max(self.minimumHeight(), h)
         side, x, y = self.rz or ("left", self.x(), self.y())
         self.rz = None
-        self.setGeometry(x - w + 1 if side == "right" else x, y, w, h)
+        # right: x is the card's right edge (r64), so the window's right side sits M beyond it
+        self.setGeometry(x + int(M * z) - w + 1 if side == "right" else x, y, w, h)
         self.save_t.start(500)
         QTimer.singleShot(60, lambda: self.snap(None, keep=True))
 
@@ -2829,6 +2840,7 @@ class Host(QWidget):
     def pop_show(self, pw, delay=180):
         """It's the player now: on screen, and the island lets go of its own."""
         pw.warm = False
+        pw.dbg_until, pw._dbg_ov = time.time() + 15, False         # r64: log its first 15 s (the pop-out lag)
         pw.hov_t.start(60)
         if getattr(pw, "born", False):
             pw.born = False
@@ -2854,6 +2866,8 @@ class Host(QWidget):
         pw = getattr(self, "popw", None)
         if pw is None or (win is not None and win is not pw):
             return
+        if time.time() < getattr(pw, "dbg_until", 0) and name not in ("pw_rzx",):
+            print(f"player: +{15 - (pw.dbg_until - time.time()):.1f}s page says {name}")
         if name == "ready":
             pw.ready = True
             self.pop_feed(pw)
@@ -2870,6 +2884,9 @@ class Host(QWidget):
             if not pw.tuck_on:
                 pw.set_tuck(False)
             self.hud("info", "Player stays out" if not pw.tuck_on else "Player tucks into the edge", ms=1400)
+        elif name == "pw_rzx":
+            if arg:
+                pw.rz_move(arg[0])
         elif name == "pw_rz":
             if arg and arg[0]:
                 pw.rz_start()
@@ -3655,6 +3672,13 @@ class Host(QWidget):
             self._del_was = dn
         # click-through everywhere except the island
         want = not inside and self.mode != "cmd"
+        pw = getattr(self, "popw", None)
+        if (not want and pw is not None and not self.dragging and self.press_at is None and pw.isVisible()
+                and not pw.tucked and not pw.fs_hidden and pw.card_rect().contains(pos) and self.mode != "cmd"):
+            want = True        # r64: the island stays on top, but over the player's card the player gets the mouse
+            if time.time() < getattr(pw, "dbg_until", 0) and not getattr(pw, "_dbg_ov", False):
+                pw._dbg_ov = True
+                print("player: the island overlaps it here, letting the clicks through to the player")
         if want and down and self.prev_button and self.click_through is False:
             want = False      # a drag that started on the island (volume / song bar) keeps the mouse until release
         if want and self.click_through is False and self.mode == "music" and right_button_down():

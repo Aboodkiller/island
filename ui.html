@@ -2127,7 +2127,7 @@ const DECK_HTTP = DECK && /^https?:$/.test(location.protocol);
 const DASH = location.hash === "#dash" || DECK || DESKW;
 const POPW = location.hash === "#player";          // r41: the music player popped out of the island into its own window
 const PWM = 14;                                    // its margin for the shadow
-const POP_SEND = new Set(["ready", "pw_perf", "pw_drag", "pw_resize", "pw_rz", "pw_pin", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
+const POP_SEND = new Set(["ready", "pw_perf", "pw_rzx", "pw_drag", "pw_resize", "pw_rz", "pw_pin", "pw_in", "pw_close", "media_toggle", "media_next", "media_prev", "media_seek",
   "media_shuffle", "media_repeat", "media_like", "media_src"]);
 const DASH_SEND = new Set(["ready", "toggle", "ex", "water", "launch", "dash_close", "media_toggle", "media_next", "media_prev",
   "media_seek", "media_shuffle", "media_repeat", "media_like", "media_src"]);
@@ -4389,7 +4389,9 @@ function popInit() {
   setMode("music"); renderMusic();
   addEventListener("resize", () => {
     // the window fits the card again after a resize: back to filling it
-    if (S.pwBox && !S.prz && Math.abs(innerWidth - 2 * PWM - S.pwBox.w) < 3 && Math.abs(innerHeight - 2 * PWM - S.pwBox.h) < 3) S.pwBox = null;
+    if (S.pwBox && !S.prz && Math.abs(innerWidth - 2 * PWM - S.pwBox.w) < 3 && Math.abs(innerHeight - 2 * PWM - S.pwBox.h) < 3) {
+      S.pwBox = null; document.body.classList.toggle("pwr", S.pwDock === "right");     // r64: fits again: back to its edge's side
+    }
     setMode("music"); vinylFit();
   });
   document.addEventListener("pointerdown", e => {       // drag it by anything that isn't a button; the corner grip resizes it
@@ -4399,6 +4401,10 @@ function popInit() {
       e.preventDefault(); e.stopImmediatePropagation();
       const [w, h] = size("music");
       S.pwBox = {w, h}; S.prz = {x: e.screenX, y: e.screenY, w, h, right: S.pwDock === "right", id: e.pointerId};
+      // r64: on the right edge the card is pinned left while you resize and the window slides left under it (Python keeps
+      // the card's right edge still). Growing the window leftwards made Qt show the old frame shifted for a split
+      // second: the player flashed toward the middle of the screen.
+      if (S.prz.right) document.body.classList.remove("pwr");
       try { g.setPointerCapture(e.pointerId); } catch (err) {}
       isl.classList.add("rzing"); send("pw_rz", [1]);
       return;
@@ -4411,12 +4417,14 @@ function popInit() {
     const dx = e.screenX - z.x, dy = e.screenY - z.y;
     S.pwBox = {w: Math.round(Math.max(300, Math.min(innerWidth - 2 * PWM, z.w + (z.right ? -dx : dx)))),
                h: Math.round(Math.max(330, Math.min(innerHeight - 2 * PWM, z.h + dy)))};
+    if (z.right && !S.przF) { S.przF = true; requestAnimationFrame(() => { S.przF = false; if (S.prz) send("pw_rzx", [S.pwBox.w]); }); }
     setMode("music"); vinylFit();
   }, true);
   document.addEventListener("pointerup", e => {
     if (!S.prz) return;
-    S.prz = null; isl.classList.remove("rzing");
+    const wasR = S.prz.right; S.prz = null; isl.classList.remove("rzing");
     send("pw_rz", [0, S.pwBox.w, S.pwBox.h]);
+    if (wasR) setTimeout(() => { if (!S.prz && !S.pwBox) document.body.classList.toggle("pwr", S.pwDock === "right"); }, 700);
     S.musicKey = null; renderMusic();
   }, true);
 }
