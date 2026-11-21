@@ -8006,11 +8006,22 @@ class Host(QWidget):
         print(f"mem: page process now {mb:.0f} MB ({'freed' if freed else 'not freed by a reload: next time it gets a new process'})")
 
     def trim(self, force=False):
-        """Hand unused RAM back to Windows while the island just sits there (at most every 5 min)."""
+        """Hand unused RAM back to Windows while the island just sits there. r62: only when it's worth it: the PC is
+        short on RAM (75 %+ used: every 5 min at most), or you've been away 10+ min (every 30 min at most). On a
+        64 GB PC at ~45 % it trimmed every 5 min and the island paged 300-500 MB straight back in (more work, not less)."""
         if not self.settings.get("ram_trim") or self.mode != "pill" or self.dragging:
             return
-        if not force and time.time() - self._trim_at < 300:
-            return
+        if not force:
+            try:
+                import psutil
+                ram = psutil.virtual_memory().percent
+            except Exception:
+                ram = 0
+            tight = ram >= 75
+            if not tight and idle_seconds() < 600:
+                return
+            if time.time() - self._trim_at < (300 if tight else 1800):
+                return
         self._trim_at = time.time()
         freed = feats.trim_memory()
         if freed > 30 * 2**20:

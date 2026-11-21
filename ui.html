@@ -376,6 +376,7 @@ body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;anima
 .dots{display:inline-flex;gap:5px;align-items:center;height:1em;vertical-align:middle;padding:0 2px}
 .dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.35;animation:dot 1.2s ease-in-out infinite}
 .dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+body:not(.playing-now) .dots i{animation-play-state:paused}   /* r62b: paused = still */
 @keyframes dot{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-5px);opacity:1}}
 .lyrbig .w,.lyr .la .w{opacity:.22;filter:blur(1.5px);transition:opacity .3s ease,filter .3s ease}
 .lyrbig .w.s,.lyr .la .w.s{opacity:1;filter:none}
@@ -440,12 +441,12 @@ body.rimon.playing-now:not(.away) #isl.s-pill:not(.tucked) .rim{opacity:.9;anima
   -webkit-mask:radial-gradient(circle,transparent 0 21%,#000 22%)}
 /* the aura (r38b): while the record spins it lets out the cover's colour: a swirling ring on the edge, sound-wave rings
    and sparks orbiting the other way. With "Live music bars" on it pumps with the real volume of what's playing */
-.vaura{position:absolute;left:135px;top:130px;width:0;height:0;opacity:0;transition:opacity .9s,transform .12s ease-out;pointer-events:none;
+.vaura{position:absolute;left:135px;top:130px;width:0;height:0;opacity:0;transition:opacity .9s,transform .12s ease-out;pointer-events:none;will-change:transform,opacity;
   transform:scale(calc(1 + var(--lv,0) * .14))}
 .vwrap.spin .vaura{opacity:1}
 body:not(.viz) .vwrap.spin .vaura{animation:vbr 2.6s ease-in-out infinite}
 @keyframes vbr{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
-.vaura>i{position:absolute;border-radius:50%}
+.vaura>i{position:absolute;border-radius:50%;will-change:transform,opacity}   /* r62: own layers: animations don't repaint */
 .vaura *{animation-play-state:paused!important}
 .vwrap.spin .vaura *{animation-play-state:running!important}
 body.away .vaura,body.away .vaura *{animation-play-state:paused!important}
@@ -807,11 +808,21 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .orow{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:12px;transition:background .15s}
 .orow:hover{background:rgba(255,255,255,.04)}
 .otm{width:52px;flex:none;font-size:12px;font-weight:700;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
-.odot{width:7px;height:7px;border-radius:50%;background:var(--c);flex:none}
+.odot{width:7px;height:7px;border-radius:50%;background:var(--c);flex:none;position:relative}
+/* r62: up next reads as a timeline: a faint line from each dot down to the next one */
+.olist .orow:not(:last-child) .odot::after{content:"";position:absolute;left:3px;top:10px;width:1px;height:32px;border-radius:1px;
+  background:linear-gradient(color-mix(in srgb,var(--c) 55%,transparent),rgba(255,255,255,.06));pointer-events:none}
+.orow.done .odot{background:transparent;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 70%,transparent)}
+/* r62: the "now" card shows how far into the block you are */
+.ohero{position:relative;overflow:hidden}
+.ohp{position:absolute;left:0;right:0;bottom:0;height:3px;background:color-mix(in srgb,var(--c) 14%,transparent);pointer-events:none}
+.ohp::after{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(var(--f) * 100%);border-radius:0 3px 3px 0;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--c) 50%,transparent),var(--c));box-shadow:0 0 10px color-mix(in srgb,var(--c) 70%,transparent);transition:width .8s ease}
+.wdrop{overflow:visible}
 .ot{flex:1;min-width:0;font-size:13.5px;font-weight:650}
 .ot.ar{direction:rtl;text-align:right}
 .oin{font-size:11.5px;font-weight:700;color:var(--mut);white-space:nowrap}
-.olate{font-size:11px;font-weight:750;color:var(--warn)}
+.olate{font-size:10.5px;font-weight:750;color:var(--warn);padding:2px 7px;border-radius:7px;background:color-mix(in srgb,var(--warn) 13%,transparent)}
 .orow.done .ot{color:var(--mut);opacity:.75;text-decoration:line-through;text-decoration-color:rgba(255,255,255,.28)}
 .orow.done .otm{color:var(--dim)}
 .ock{width:22px;height:22px;border-radius:50%;border:2px solid color-mix(in srgb,var(--c) 60%,transparent);display:grid;place-items:center;flex:none;cursor:pointer;color:#0b0c10;transition:background .15s,transform .12s}
@@ -1052,6 +1063,11 @@ body.dash #isl{top:0;left:0;transform:none;border-radius:0;border:0;box-shadow:n
 .pk-then .r .dot{width:6px;height:6px}
 .pk-then .r .ell{color:#c9ccd8;min-width:0;flex:1}
 .pk-then .r.late .ell,.pk-then .r.late .tm2{color:var(--bad)}
+.toast .trow{display:flex;align-items:center;gap:10px;min-width:0}
+.toast .trow .tbody{flex:1;min-width:0}
+.toast .tb2{flex:none;display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 9px;border-radius:12px;max-width:60%;overflow:hidden;white-space:nowrap;
+  background:color-mix(in srgb,var(--c) 15%,rgba(255,255,255,.04));color:color-mix(in srgb,var(--c) 45%,#d6d9e3);font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.toast .tb2 svg{opacity:.8;flex:none}
 .toast .tbody{line-height:1.38;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;flex-shrink:0}
 .pk-desc{font-size:13px;color:#c9ccd8;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex-shrink:0}
 .wod .k{font-size:10px;font-weight:800;letter-spacing:.08em;color:#fbbf24;flex:none}
@@ -1826,8 +1842,8 @@ body.playing-now .dw-t.on{background:color-mix(in srgb,var(--tint,#fff) 34%,rgba
 #stk{position:absolute;inset:0 0 auto 0;height:0;pointer-events:none;display:none}
 body.dock-top #stk{display:block}
 #stk i{position:absolute;left:50%;height:26px;border-radius:0 0 18px 18px;opacity:0;transition:opacity .25s ease,transform .45s var(--spring)}
-#stk i:nth-child(1){background:#0e0e12;transform:translateY(6px)}
-#stk i:nth-child(2){background:#18181e;transform:translateY(0)}
+#stk i:nth-child(1){background:linear-gradient(#121218,#0c0c10);box-shadow:inset 0 -1px 0 rgba(255,255,255,.05),0 8px 16px rgba(0,0,0,.3);transform:translateY(6px)}
+#stk i:nth-child(2){background:linear-gradient(#1d1e26,#15151b);box-shadow:inset 0 -1px 0 rgba(255,255,255,.08),0 6px 14px rgba(0,0,0,.35);transform:translateY(0)}   /* r62: a lit edge, like cards */
 #stk.n1 i:nth-child(2),#stk.n2 i{opacity:1}
 #stk.n1 i:nth-child(2),#stk.n2 i:nth-child(2){transform:translateY(8px)}
 #stk.n2 i:nth-child(1){transform:translateY(15px)}
@@ -2212,7 +2228,14 @@ function ring(size, frac, color, stroke=3, inner="") {
 }
 const I = {
   flame: (c="#ff8a3d", s=13) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><defs><linearGradient id="fl${c.replace(/\W/g,"")}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="${c}"/></linearGradient></defs><path fill="url(#fl${c.replace(/\W/g,"")})" d="M12 1c4.5 4.2 7.5 8.2 7.5 12.7A7.5 7.5 0 0 1 4.5 13.7c0-2.6 1.2-4.7 3-6.3.2 2.2 1.1 3.6 2.6 4.3C9.8 8 10.6 4.4 12 1z"/></svg>`,
-  drop: (c="#22d3ee", s=12) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path fill="${c}" d="M12 2s7 7.6 7 13a7 7 0 0 1-14 0c0-5.4 7-13 7-13z"/></svg>`,
+  drop: (c="#22d3ee", s=12, f=null) => {
+    const D = "M12 2s7 7.6 7 13a7 7 0 0 1-14 0c0-5.4 7-13 7-13z";
+    if (f == null) return `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path fill="${c}" d="${D}"/></svg>`;
+    // r62: the drop fills up as the day's water goes in (outline + a level), full = solid
+    const id = "dk" + (I._dn = (I._dn || 0) + 1), y = (22.2 - 20 * Math.max(0, Math.min(1, f))).toFixed(2);
+    return `<svg class="wdrop" width="${s}" height="${s}" viewBox="0 0 24 24"><defs><clipPath id="${id}"><rect x="0" y="${y}" width="24" height="24"/></clipPath></defs>`
+      + `<path d="${D}" fill="${c}" fill-opacity=".16" stroke="${c}" stroke-width="1.6"/><path d="${D}" fill="${c}" clip-path="url(#${id})"/></svg>`;
+  },
   dumb: (c="#ff7a4d", s=14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="${c}"><rect x="1" y="8" width="3" height="8" rx="1"/><rect x="4" y="5.5" width="3" height="13" rx="1"/><rect x="17" y="5.5" width="3" height="13" rx="1"/><rect x="20" y="8" width="3" height="8" rx="1"/><rect x="7" y="10.8" width="10" height="2.4"/></svg>`,
   prev: s => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path fill="#f0f2f8" d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>`,
   next: s => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path fill="#f0f2f8" d="M16 5h2v14h-2zM4 5l11 7-11 7z"/></svg>`,
@@ -2543,7 +2566,7 @@ function renderPill() {
     h += extras(false);
     if (S.claude) h += `<span class="chip" title="Claude" style="background:${bg("#d97757",18)};color:#d97757">✳ ${S.claude}</span>`;
     if (d && d.late) h += `<span class="chip" style="background:${bg("#fb7185",16)};color:var(--bad)">${d.late} late</span>`;
-    if (d && d.water.goal) h += `<span class="ico ${LM ? "tiny" : ""}" style="color:${d.water.ml>=d.water.goal?"var(--ok)":"#22d3ee"}">${I.drop("#22d3ee", LM ? 10 : 12)}${(d.water.ml/1000).toFixed(1)}${LM ? "" : "L"}</span>`;
+    if (d && d.water.goal) h += `<span class="ico ${LM ? "tiny" : ""}" style="color:${d.water.ml>=d.water.goal?"var(--ok)":"#22d3ee"}">${I.drop("#22d3ee", LM ? 10 : 12, d.water.ml / d.water.goal)}${lit(d.water.ml)}${LM ? "" : "L"}</span>`;
     h += `<div class="sep"></div><span class="clock">${clockHTML("clk", true)}</span>`;
     if (it && !LM) h += `<span class="cd" style="color:${pm ? pm.col : cur?c:"var(--fg)"}">${pm ? roll("cd", fmt(pm.left)) + (pm.phase === "break" ? " break" : " left") : cur ? roll("cd", fmt(cur.left)) + " left" : "in " + roll("cd", fmt(it.until))}</span>`;
     h += `</div>`;
@@ -2560,7 +2583,7 @@ function renderPill() {
     } else h += ring(40, 1, "var(--ok)", 3, `<span style="color:var(--ok)">✓</span>`) + `<span class="lbl">clear</span>`;
     h += `<div class="hr"></div>`;
     if (mediaOn()) h += `<div class="col ${m.playing?"playing":""}" style="align-items:center;gap:6px;--glowc:${S.glowc||"#1ed760"}"><div class="art" style="width:34px;height:34px;${m.art?"background-image:var(--art)":""}"></div><div class="eq"><i></i><i></i><i></i><i></i></div></div><div class="hr"></div>`;
-    if (d && d.water.goal) h += `<span class="ico" style="flex-direction:column;gap:2px;color:#22d3ee">${I.drop("#22d3ee",14)}${(d.water.ml/1000).toFixed(1)}</span>`;
+    if (d && d.water.goal) h += `<span class="ico" style="flex-direction:column;gap:2px;color:#22d3ee">${I.drop("#22d3ee", 14, d.water.ml / d.water.goal)}${lit(d.water.ml)}</span>`;
     h += `</div>`;
     if (d && d.water.goal) h += `<div class="edge-water"><b style="height:${Math.min(100, d.water.ml/d.water.goal*100)}%"></b></div>`;
   }
@@ -2594,7 +2617,7 @@ function pillClean(d, cur, it, m, c) {
   if (S.claude) h += `<span class="chip" title="Claude" style="background:${bg("#d97757",18)};color:#d97757">✳ ${S.claude}</span>`;
   if (d) {
     h += `<div class="pc-st">`;
-    if (d.water.goal) { const full = d.water.ml >= d.water.goal; h += `<span class="ico" title="Water ${(d.water.ml / 1000).toFixed(1)} / ${(d.water.goal / 1000).toFixed(1)} L" style="${full ? "color:var(--ok)" : ""}">${I.drop(full ? "#4ade80" : "#22d3ee", 12)}${(d.water.ml / 1000).toFixed(1)}</span>`; }
+    if (d.water.goal) { const full = d.water.ml >= d.water.goal; h += `<span class="ico" title="Water ${(d.water.ml / 1000).toFixed(1)} / ${(d.water.goal / 1000).toFixed(1)} L" style="${full ? "color:var(--ok)" : ""}">${I.drop(full ? "#4ade80" : "#22d3ee", 12, d.water.ml / d.water.goal)}${lit(d.water.ml)}</span>`; }
     h += `</div>`;
   }
   if (S.buddy === "eyes" ? !mediaOn() : S.buddy && S.buddy !== "off") h += S.buddy === "eyes" ? `<span class="eyes"><i></i><i></i></span>` : buddySVG(S.buddy);
@@ -3459,7 +3482,8 @@ const devOn = () => !!(S.settings && S.settings.values && S.settings.values.dev)
 const MORE_I = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
 function oneHero(it, kick, sub, btns) {
   const c = CAT[it.cat] || "#a78bfa";
-  return `<div class="shero ohero" style="--c:${c}">${badge(it.cat, 46)}<div class="col" style="flex:1;gap:4px;min-width:0"><span class="shk">${kick}</span>
+  const pg = it.state === "now" && it.frac != null ? `<i class="ohp" style="--f:${Math.max(0, Math.min(1, it.frac)).toFixed(3)}"></i>` : "";
+  return `<div class="shero ohero" style="--c:${c}">${pg}${badge(it.cat, 46)}<div class="col" style="flex:1;gap:4px;min-width:0"><span class="shk">${kick}</span>
     <span class="sht ell ${AR.test(it.title || "") ? "ar" : ""}">${esc(it.title)}</span>${sub ? `<span class="shd ell ${AR.test(sub) ? "ar" : ""}">${esc(sub)}</span>` : ""}
     ${btns ? `<div class="sacts">${btns}</div>` : ""}</div></div>`;
 }
@@ -3469,6 +3493,7 @@ function oneRow(t) {
     <span class="ot ell ${AR.test(t.title || "") ? "ar" : ""}">${esc(t.title)}</span>${t.state === "late" && !t.block && !t.done ? `<span class="olate">missed</span>` : t.until != null && t.until <= 90 && !t.done ? `<span class="oin">in ${fmt(t.until)}</span>` : ""}
     ${tick ? `<span class="ock ${t.done ? "on" : ""}" data-a="toggle" data-v="${esc(t.key)}" title="${t.done ? "Undo" : "Done"}">${t.done ? hico("ok", 12) : ""}</span>` : ""}</div>`;
 }
+function lit(ml) { return (ml / 1000).toFixed(1).replace(/\.0$/, ""); }      // r62: 0 / 2.5 / 3 (not 0.0 / 3.0)
 function todaySimple() {
   const d = S.data, v = d.view, L = v.items.filter(t => t.time);
   const live = L.filter(t => !t.done && !(t.block && t.state !== "now" && t.state !== "next"));
@@ -3481,14 +3506,14 @@ function todaySimple() {
   } else h += `<div class="shero" style="--c:#4ade80"><span class="shic">${hico("ok", 26)}</span><div class="col" style="gap:4px"><span class="shk">Today</span><span class="sht">${L.length ? "All done. Go rest." : "Nothing planned today."}</span></div></div>`;
   if (d.water.goal) {
     const w = d.water, L2 = x => (x / 1000).toFixed(2).replace(/\.?0+$/, "");     // same as the full card: 5.74, 2.5, 3
-    h += `<div class="owat">${I.drop("#22d3ee", 16)}<b>${L2(w.ml)}<small>/${L2(w.goal)} L</small>${w.ml >= w.goal ? `<small class="owok" title="goal hit">✓</small>` : ""}</b><div class="bar" style="flex:1;height:7px;border-radius:4px"><b style="width:${Math.min(100, w.ml / w.goal * 100)}%;background:linear-gradient(90deg,#0ea5e9,#22d3ee)"></b></div>
+    h += `<div class="owat">${I.drop("#22d3ee", 16, w.ml / w.goal)}<b>${L2(w.ml)}<small>/${L2(w.goal)} L</small>${w.ml >= w.goal ? `<small class="owok" title="goal hit">✓</small>` : ""}</b><div class="bar" style="flex:1;height:7px;border-radius:4px"><b style="width:${Math.min(100, w.ml / w.goal * 100)}%;background:linear-gradient(90deg,#0ea5e9,#22d3ee)"></b></div>
       ${w.chips.filter(c => c > 0).slice(0, 2).map(c => `<span class="ochip" data-a="water" data-v="${c}">+${c >= 1000 && c % 1000 === 0 ? c / 1000 + "L" : c}</span>`).join("")}</div>`;
   }
   const next = live.filter(t => t !== hero).slice(0, 4), done = L.filter(t => t.done && !t.block).length, missed = L.filter(t => t.state === "late" && !t.block && !t.done && t !== hero).length;
   if (next.length) h += `<div class="sec"><span>Up next</span><span>${done ? `${done} done` : ""}${missed ? `${done ? " · " : ""}${missed} missed` : ""}</span></div><div class="olist">${next.map(oneRow).join("")}</div>`;
   const P = S.prayer, dl = ((S.life && S.life.deadlines) || []).filter(x => !x.done && x.days != null && x.days <= 7).slice(0, 2);
   const chips = [P && P.on && P.next ? `<span class="ochip2">${hico("moon", 13)}${esc(P.next.n)} ${esc(P.next.t || "")}</span>` : ""]
-    .concat(dl.map(x => `<span class="ochip2" style="--c:${x.days <= 1 ? "var(--bad)" : "var(--warn)"}">${hico("cal", 13)}${esc(shortDL(x.title))} · ${x.days === 0 ? "today" : x.days === 1 ? "tomorrow" : x.days + "d"}</span>`)).filter(Boolean);
+    .concat(dl.map(x => `<span class="ochip2" style="--c:${x.days <= 1 ? "var(--bad)" : "var(--warn)"}">${hico("cal", 13)}${esc(shortDL(x.title))} · ${x.days < 0 ? -x.days + "d late" : x.days === 0 ? "today" : x.days === 1 ? "tomorrow" : x.days + "d"}</span>`)).filter(Boolean);
   if (chips.length) h += `<div class="ochips">${chips.join("")}</div>`;
   h += `<div class="smore" data-a="td_all">Whole day<span>${MORE_I}</span></div>`;
   return h;
@@ -3632,7 +3657,7 @@ function paneStudy() {
   let h = studyHero(st) + studyStrip(st);
   const simple = !devOn() && !S.stMore;
   if (C && C.n && !simple) h += flashCard("tab");
-  h += `<div class="sec"><span>Subjects</span><span>${st.mocks ? `${st.days_left} days of new material` : `${st.days_left} days left`}</span></div>` + studyGrid(st);
+  h += `<div class="sec"><span>Subjects</span><span>${st.mocks ? `${st.days_left} day${st.days_left === 1 ? "" : "s"} of new material` : `${st.days_left} day${st.days_left === 1 ? "" : "s"} left`}</span></div>` + studyGrid(st);
   if (x && x.exams && x.exams.length) h += `<div class="sec"><span>Exams</span><span>${addLk("exam ", "exam physics 14 dec")}</span></div><div class="exr">${x.exams.map(e => `<span class="exc ${e.days <= 7 ? "hot" : ""}" data-a="study_exam" data-v="${esc(e.name.toLowerCase().replace(" ", ""))}" style="--c:${CAT[e.cat] || "#94a3b8"}" title="${esc(e.date)} · click to change"><b>${e.days}</b><span>${esc(e.name)}</span></span>`).join("")}</div>`;
   if (simple) return h + `<div class="smore" data-a="st_more">More${C && C.n ? ` · ${C.n} card${C.n > 1 ? "s" : ""} to review` : ""}<span>${MORE_I}</span></div>`;
   h += studyWeek(st);
@@ -3959,13 +3984,22 @@ function paneSettingsOld() {
 }
 
 /* ====================================================================== TOAST + LIVE */
+// r62: a short second line (a time, "in 20 min") is a small chip in the category colour; with an Arabic body it sits
+// on the same line (chip left, Arabic right) instead of zig-zagging under it
+function toastBody(t) {
+  const ar = t.body && AR.test(t.body), chip = t.body2 && String(t.body2).length <= 30;
+  const b1 = t.body ? `<div class="tbody ${ar ? "ar" : ""}" style="font-size:13.5px;font-weight:500;color:#dfe2ec">${esc(t.body)}</div>` : "";
+  if (!t.body2) return b1;
+  if (!chip) return b1 + `<div class="ds ell">${esc(t.body2)}</div>`;
+  const c2 = `<span class="tb2">${hico("timer", 12)}${esc(t.body2)}</span>`;
+  return ar ? `<div class="trow">${c2}${b1}</div>` : b1 + `<div class="trow">${c2}</div>`;
+}
 function renderToast() {
   const t = S.toast; if (!t) return;
   const c = CAT[t.cat] || "#a78bfa";
   $("L-toast").innerHTML = `<div class="toast" style="--c:${c};height:100%">
     <div class="row">${badge(t.cat, 36)}<div class="col" style="flex:1">${t.kicker && String(t.title || "").trim().toLowerCase().startsWith(String(t.kicker).trim().toLowerCase()) ? "" : `<span class="k" style="color:${c}">${esc(t.kicker)}</span>`}<span class="t ell" style="font-size:16.5px">${esc(t.title)}</span></div>${t.more ? `<span class="tstk" title="Scroll to flip through them · Delete clears them all">+${t.more}<b data-a="toast_clear">clear all</b></span>` : ""}</div>
-    ${t.body ? `<div class="tbody ${AR.test(t.body)?"ar":""}" style="font-size:13.5px;font-weight:500;color:#dfe2ec">${esc(t.body)}</div>` : ""}
-    ${t.body2 ? `<div class="ds ell">${esc(t.body2)}</div>` : ""}
+    ${toastBody(t)}
     <div class="acts">${t.actions.map((a,i)=>`<div class="btn ${i===0?"pri":""}" data-a="toast" data-v="${i}">${esc(a)}</div>`).join("")}</div>
     <div class="tbar"><b style="animation-duration:${t.timeout}s"></b></div></div>`;
   // size the island to the real content so nothing gets clipped (measured at the toast's own width)
@@ -4124,8 +4158,15 @@ function posNow() {               // the one song clock everything reads
   if (!a) return S.mpos ?? (S.media ? S.media.pos : 0) ?? 0;
   return a.p + (a.playing ? (Date.now() - a.at) / 1000 : 0);
 }
-function setAnchor(p, playing, force, tol) {
+function setAnchor(p, playing, force, tol, src) {
   const pred = posNow();
+  // r62b: while paused, Spotify's own clock and Windows' can disagree by a second or two and take turns moving the
+  // stopped song back and forth (the lyrics jumped up and down). Paused, only a real seek (2.5 s+) moves it.
+  if (!force && !playing && S.anchor && !S.anchor.playing && Math.abs(pred - p) < 2.5) {
+    if (Math.abs(pred - p) > .3 && (S.lyrDbg = (S.lyrDbg || 0) + 1) <= 6) console.log(`lyr: paused, ignored ${src || "?"} clock ${p.toFixed(2)} (holding ${pred.toFixed(2)})`);
+    return;
+  }
+  if (playing) S.lyrDbg = 0;
   if (force || !S.anchor || playing !== S.anchor.playing || Math.abs(pred - p) > (tol || .3)) S.anchor = {p, at: Date.now(), playing: !!playing};
 }
 function lyrPos() { return posNow(); }
@@ -4278,11 +4319,15 @@ function lyrWords() {             // fill each syllable / word as it's sung (Spo
     ws.forEach(w => { const st = acc / total; acc += w.textContent.length + 1; w.classList.toggle("s", f >= st); });
   });
 }
-(function kloop() {               // ~30 fps while lyrics are on screen and the song plays
-  if (POPW && document.body.classList.contains("ptuck")) { setTimeout(kloop, 400); return; }   // r58: tucked player: no frames
+(function kloop() {               // ~30 fps while sung words are on screen and the song plays
+  // r62: nothing to fill (no karaoke words showing, paused, tucked, hidden): no frames at all, just a look every 0.3 s.
+  // Before, this asked for a frame 60 times a second on every page forever (the island, the player, the desk widgets).
+  const live = S.lyr && S.media && S.media.playing && S.mode !== "toast" && !document.hidden
+    && !(POPW && document.body.classList.contains("ptuck")) && lyrShown() && document.querySelector(".kar");
+  if (!live) { setTimeout(kloop, 300); return; }
   requestAnimationFrame(kloop);
   const t = performance.now(); if (t - (S.kT || 0) < 32) return; S.kT = t;
-  if (S.lyr && S.media && S.media.playing && S.mode !== "toast" && !document.hidden) lyrWords();
+  lyrWords();
 })();
 setInterval(() => { if (S.lyr && S.media && S.media.playing && S.mode !== "toast") syncLyrics(false); }, 250);
 setInterval(() => {   // the level stream stopped (paused, hidden, setting off): back to the CSS bars
@@ -4811,7 +4856,7 @@ window.island = {
       }
     }
     if (S.mode === "music") { const vw = document.querySelector("#L-music .vwrap"); if (vw) vw.style.setProperty("--lv", L.toFixed(3)); }   // the vinyl aura pumps
-    if (POPW) document.body.style.setProperty("--lv", L.toFixed(3));                                                                    // and the tucked tab
+    if (POPW) { const tb = document.getElementById("pwtab"); if (tb) tb.style.setProperty("--lv", L.toFixed(3)); }               // r62: only the tab (not all of <body>)
     document.querySelectorAll(".layer.on .playing .eq").forEach(eq => {
       const is = eq.children;
       for (let k = 0; k < is.length; k++) { const w = .5 + .5 * Math.abs(Math.sin(t * (2.3 + k * 1.37) + k * 1.9)); is[k].style.transform = `scaleY(${(Math.max(3, 3 + 10 * L * w) / 13).toFixed(3)})`; }
@@ -4919,7 +4964,7 @@ window.island = {
   spos(a) {
     const [p, playing, title] = a;
     if (!S.media || title !== S.media.title || S.seeking || S.seekHold > Date.now()) return;
-    setAnchor(p, playing, false, .3); S.spotAt = Date.now(); S.mpos = posNow(); syncMediaPos();
+    setAnchor(p, playing, false, .3, "spotify"); S.spotAt = Date.now(); S.mpos = posNow(); syncMediaPos();
   },
   hud(h) {
     if (!["pill", "hud", "live"].includes(S.mode) || S.drag) return;
@@ -4955,7 +5000,7 @@ window.island = {
     document.body.classList.toggle("playing-now", !!(S.media && S.media.playing));
     const spot = Date.now() - (S.spotAt || 0) < 3000 && S.media && prev && prev.title === S.media.title;
     if (S.media && prev && prev.title !== S.media.title) S.anchor = null;          // new song: start the clock fresh
-    if (!S.seeking && !(S.seekHold > Date.now()) && !spot && S.media) setAnchor(S.media.pos, S.media.playing, false, .9);
+    if (!S.seeking && !(S.seekHold > Date.now()) && !spot && S.media) setAnchor(S.media.pos, S.media.playing, false, .9, "windows");
     else if (S.media && S.anchor && S.anchor.playing !== !!S.media.playing && !spot) setAnchor(posNow(), S.media.playing, true);
     if (S.media && !S.seeking) S.mpos = posNow();
     if (S.media && (!prev || prev.title !== S.media.title || prev.art !== S.media.art)) artColor(S.media.art);
@@ -5106,7 +5151,16 @@ setInterval(() => {                 // the smart stack flips every 8 s
 }, 8000);
 // collect the page's garbage ourselves: Qt WebEngine's V8 doesn't do it on its own when allocating (QTBUG-150562),
 // which grew the page process ~100 MB a minute. window.gc exists because island2.py starts Chromium with --expose-gc.
-setInterval(() => { if (typeof window.gc === "function") { const t = performance.now(); window.gc(); S.gcMs = performance.now() - t; } }, 15000);
+// r62: a full gc() froze the page 10-80 ms every 15 s (a visible hitch in every animation). Now: a quick young-generation
+// sweep every 15 s and a full one every 2 min that runs in the background (V8 async major GC, no freeze; Chromium 140 has it).
+setInterval(() => {
+  if (typeof window.gc !== "function") return;
+  const t = performance.now(); S.gcN = (S.gcN || 0) + 1;
+  try {
+    if (S.gcN % 8 === 0) { const p = window.gc({type: "major", execution: "async"}); if (p && p.then) p.then(() => { S.gcMs = +(performance.now() - t).toFixed(1); }); else S.gcMs = performance.now() - t; }
+    else { window.gc({type: "minor"}); S.gcMs = performance.now() - t; }
+  } catch (e) { window.gc(); S.gcMs = performance.now() - t; }
+}, 15000);
 
 /* ---- the cover flies from the pill into the opened island */
 function flySrc(any) {
@@ -5712,7 +5766,7 @@ function tileLook(c) {
 function deckHead() {
   const d = S.data, now = new Date(), hh = now.getHours(), P = S.prayer && S.prayer.on && S.prayer.next ? S.prayer.next : null;
   return `<div class="dk-clock"><b>${hh % 12 || 12}:${String(now.getMinutes()).padStart(2, "0")}</b><span>${hh < 12 ? "am" : "pm"}</span></div>
-    <div class="dk-date"><b>${now.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}</b>${d.big ? `<span>${d.big.days} days to ${esc(d.big.title)}</span>` : ""}</div><div class="sp"></div>
+    <div class="dk-date"><b>${now.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}</b>${d.big ? `<span>${d.big.days} day${d.big.days === 1 ? "" : "s"} to ${esc(d.big.title)}</span>` : ""}</div><div class="sp"></div>
     ${S.game ? `<div class="dk-chip game">${hico("game", 18)}${esc(S.game.name)}<span class="mut">${fmt((Date.now() - S.game.since) / 60000)}${S.sysx && S.sysx.ping != null ? " · " + S.sysx.ping + " ms" : ""}</span></div>` : ""}
     ${P ? `<div class="dk-chip dk-pr"><span style="color:#5eead4;display:grid">${hico("moon", 17)}</span>${esc(P.n)}<span class="mut">${fmt((P.at - Date.now()) / 60000)}</span></div>` : ""}
     ${S.wx ? `<div class="dk-chip dk-wxc"><span style="font-size:19px">${S.wx.icon}</span>${Math.round(S.wx.t)}°</div>` : ""}
