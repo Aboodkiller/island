@@ -1717,6 +1717,7 @@ class PopWin(QWidget):
                 user32.SetWindowPos(ctypes.c_void_p(int(self.winId())), ctypes.c_void_p(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010 | 0x0040)
             except Exception as e:
                 print("player front:", e)
+            self.host.island_over(self)           # r60: ...but always under the island
 
     def _btn_down(self):
         if WIN:
@@ -3773,6 +3774,24 @@ class Host(QWidget):
             print(f"follow: -> {scr.name()} ({why})")
 
     # ---------------------------------------------------------- slow loops
+    def island_over(self, pw, force=True):
+        """r60: the island always stays above the popped-out player (both live in the topmost band). force=False only
+        fixes it when the player really is above (walks the z-order up from the island: a few windows at most)."""
+        if not WIN or pw is None or self.hidden_fs or not self.isVisible():
+            return
+        try:
+            me, ph = int(self.winId()), int(pw.winId())
+            if not force:
+                user32.GetWindow.restype = ctypes.c_void_p
+                h, n = user32.GetWindow(ctypes.c_void_p(me), 3), 0          # GW_HWNDPREV: the window above
+                while h and n < 400 and h != ph:
+                    h, n = user32.GetWindow(ctypes.c_void_p(h), 3), n + 1
+                if h != ph:
+                    return
+            user32.SetWindowPos(ctypes.c_void_p(me), ctypes.c_void_p(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
+        except Exception as e:
+            print("island over player:", e)
+
     def on_second(self):
         self.follow_tick()
         v = getattr(self, "voice", None)
@@ -3826,6 +3845,9 @@ class Host(QWidget):
                         self.media.loop.call_soon_threadsafe(self.media.wake.set)
                     if self.toasts:
                         self.drop_stale_toasts()
+        pw = getattr(self, "popw", None)
+        if WIN and pw is not None and pw.ready and not pw.fs_hidden and pw.isVisible():
+            self.island_over(pw, force=False)
         s = None if self.hidden_fs else self.sys.sample()
         if self.hidden_fs and getattr(self, "_game_t0", None):
             self.temps()
@@ -8184,6 +8206,40 @@ def hand_off():
     subprocess.Popen([exe, WATCHDOG_FILE], cwd=HERE, creationflags=0x00000008 | 0x00000200, close_fds=True)
 
 
+RENDER_FILE = os.path.join(HERE, "render_mode.json")
+
+
+def render_level():
+    """r60: the island's native crashes are all one bug in Qt WebEngine's GPU thread: ANGLE's D3D11 backend reads a
+    dead input layout (Qt6WebEngineCore.dll +0xd23c83, StateManager11 -> IASetInputLayout). Level 1 (default) rasters
+    on the CPU, so the GPU only composites (most of ANGLE's draws gone); after 2 of those crashes within 24 h at
+    level 1 it moves to level 2 = all software (no ANGLE at all) and stays there. render_mode.json {"level": 1} resets."""
+    try:
+        with open(RENDER_FILE, encoding="utf-8") as f:
+            st = json.load(f)
+    except Exception:
+        st = {}
+    try:
+        lvl = int(st.get("level", 1))
+    except Exception:
+        lvl = 1
+    now, why = time.time(), ""
+    crashes = [c for c in st.get("crashes", []) if isinstance(c, list) and len(c) == 2 and now - c[0] < 86400]
+    args = sys.argv
+    after = args[args.index("--after") + 1] if "--after" in args[:-1] else ""
+    if after == "crash3221225477":                     # 0xC0000005 (the watchdog says so)
+        crashes.append([now, lvl])
+        if lvl == 1 and sum(1 for c in crashes if c[1] == 1) >= 2:
+            lvl, why = 2, " -- 2 Qt WebEngine crashes in 24 h, switching to software"
+    st.update(level=lvl, crashes=crashes[-20:])
+    try:
+        with open(RENDER_FILE, "w", encoding="utf-8") as f:
+            json.dump(st, f)
+    except Exception as e:
+        print("render_mode.json:", e)
+    return lvl, why
+
+
 def main():
     global NO_CT
     if (WIN and not feats.under_watchdog() and os.path.exists(WATCHDOG_FILE)
@@ -8215,9 +8271,13 @@ def main():
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --js-flags=--expose-gc"
     if "--gl" in sys.argv:            # fallback if the window background ever renders black
         os.environ["QSG_RHI_BACKEND"] = "opengl"
-    if "--software" in sys.argv:      # last-resort fallback
+    lvl, why = render_level()
+    if "--software" in sys.argv or lvl >= 2:      # last-resort fallback (and r60's level 2)
         os.environ["QT_QUICK_BACKEND"] = "software"
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --disable-gpu"
+    elif lvl == 1:
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --disable-gpu-rasterization"
+    print(f"render: level {lvl} ({['GPU', 'GPU compositing, CPU raster', 'software'][min(lvl, 2)]}){why}")
     QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
